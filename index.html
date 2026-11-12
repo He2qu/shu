@@ -1,0 +1,2542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Hi, Creator · 静谧书房</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 默认：石墨深色护眼 (Graphite Dark) */
+    :root {
+      --bg-deep: #111113;
+      --bg-main: #161618;
+      --bg-elevated: #1f1f23;
+      --bg-hover: #28282d;
+      --bubble-user: #2a2a30;
+      --bubble-ai: #1c1c20;
+      --border-subtle: #2c2c32;
+      --border-strong: #46464f;
+      --text-primary: #dcdce0;
+      --text-dialogue: #f2f2f5;
+      --text-secondary: #9898a2;
+      --text-muted: #666670;
+      --accent: #e4e4e8;
+      --accent-contrast: #121214;
+      --tag-bg: #242429;
+      --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.35);
+      --overlay-bg: rgba(8, 8, 10, 0.68);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* 可切换：水墨纸张浅色护眼 (E-Ink Paper) */
+    [data-theme="light"] {
+      --bg-deep: #e4e4df;
+      --bg-main: #efefeb;
+      --bg-elevated: #e6e6e1;
+      --bg-hover: #dadad4;
+      --bubble-user: #dcdcd6;
+      --bubble-ai: #fafaf7;
+      --border-subtle: #d0d0c8;
+      --border-strong: #a2a29a;
+      --text-primary: #242427;
+      --text-dialogue: #111113;
+      --text-secondary: #5a5a62;
+      --text-muted: #86868e;
+      --accent: #222225;
+      --accent-contrast: #f4f4f0;
+      --tag-bg: #dfdfd9;
+      --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.05);
+      --overlay-bg: rgba(25, 25, 28, 0.45);
+    }
+
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      width: 100%;
+      overflow: hidden;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      font-family: var(--custom-font, -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", sans-serif);
+      font-size: var(--base-font-size, 15px);
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    ::-webkit-scrollbar { width: 3px; height: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
+
+    #app {
+      display: flex;
+      height: 100%;
+      height: 100dvh;
+      width: 100vw;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-main);
+    }
+
+    /* 侧边栏遮罩（手机端专用） */
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      background: var(--overlay-bg);
+      backdrop-filter: blur(2px);
+      z-index: 35;
+      display: none;
+    }
+    .sidebar-backdrop.open { display: block; }
+
+    /* 左侧会话抽屉 */
+    .sidebar {
+      width: 276px;
+      max-width: 82vw;
+      height: 100%;
+      background: var(--bg-deep);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+      z-index: 40;
+      flex-shrink: 0;
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transform: translateX(0);
+        box-shadow: var(--shadow-soft);
+      }
+      .sidebar.closed {
+        transform: translateX(-105%);
+      }
+    }
+    @media (min-width: 769px) {
+      .sidebar.closed {
+        width: 0;
+        overflow: hidden;
+        border-right: none;
+      }
+    }
+
+    .brand {
+      height: 52px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand-title {
+      font-size: 1em;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-primary);
+    }
+    .new-chat-btn {
+      margin: 12px 12px 6px;
+      padding: 11px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 500;
+    }
+    .new-chat-btn:active { background: var(--bg-hover); }
+
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 10px 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .session-item {
+      padding: 11px 12px;
+      border-radius: 9px;
+      margin-bottom: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+    }
+    .session-item.active {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-subtle);
+    }
+    .session-info {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      padding-right: 8px;
+    }
+    .session-name {
+      font-size: 0.92em;
+      margin-bottom: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .session-time {
+      font-size: 0.74em;
+      color: var(--text-muted);
+    }
+    .session-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .session-actions button {
+      background: var(--bg-main);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.8em;
+      padding: 4px 7px;
+      border-radius: 6px;
+    }
+
+    /* 主界面区域 */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100%;
+    }
+
+    /* 顶部导航栏：针对 iPhone 13 390px 宽度专门优化 */
+    .header {
+      padding-top: var(--safe-top);
+      min-height: calc(52px + var(--safe-top));
+      padding-left: 10px;
+      padding-right: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-main);
+      z-index: 10;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+    .icon-btn {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      height: 34px;
+      padding: 0 9px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.82em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .icon-btn:active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .icon-btn.highlight {
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+    .badge-num {
+      font-size: 0.78em;
+      padding: 0 4px;
+      border-radius: 4px;
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .model-select {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      height: 34px;
+      padding: 0 7px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.8em;
+      outline: none;
+      max-width: 132px;
+      text-overflow: ellipsis;
+    }
+
+    /* 消息列表：iPhone 13 黄金阅读间距 + 左右气泡 */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 14px 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    @media (min-width: 769px) {
+      .messages { padding: 24px 15%; }
+      .model-select { max-width: 200px; }
+    }
+
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      max-width: 88%;
+      position: relative;
+    }
+    .msg-row.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+    .msg-row.assistant {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    /* 消息顶部元信息栏 */
+    .msg-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      padding: 0 2px;
+      font-size: 0.74em;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+    .msg-row.user .msg-header {
+      flex-direction: row-reverse;
+    }
+    .msg-floor {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .msg-sender {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .lore-hit-badge {
+      font-size: 0.92em;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--tag-bg);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    /* 左右对话气泡 */
+    .bubble {
+      padding: 11px 14px;
+      border-radius: 14px;
+      line-height: var(--reading-line-height, 1.6);
+      word-break: break-word;
+      font-size: 0.96em;
+      letter-spacing: 0.02em;
+      text-align: justify;
+    }
+    .msg-row.assistant { max-width: 97%; }
+    body.indent-on .msg-row.assistant .bubble p { text-indent: 2em; }
+    .msg-row.assistant .bubble { padding: 14px 16px; }
+    .scene-header {
+      font-size: 0.8em;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+    }
+    .msg-row.user .bubble {
+      background: var(--bubble-user);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      border-bottom-right-radius: 4px;
+    }
+    .msg-row.assistant .bubble {
+      background: var(--bubble-ai);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      border-bottom-left-radius: 4px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    /* 角色扮演排版美化：动作斜体、台词高亮 */
+    .bubble p { margin-bottom: var(--reading-para-gap, 0.65em); }
+    .bubble p:last-child { margin-bottom: 0; }
+    .rp-action {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+    .rp-quote {
+      color: var(--text-dialogue);
+      font-weight: 450;
+    }
+    .bubble code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: var(--bg-deep);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.86em;
+      border: 1px solid var(--border-subtle);
+    }
+    .bubble pre {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      padding: 9px 11px;
+      border-radius: 7px;
+      overflow-x: auto;
+      margin: 6px 0;
+      font-size: 0.84em;
+    }
+    .bubble hr {
+      border: none;
+      border-top: 1px solid var(--border-subtle);
+      margin: 8px 0;
+    }
+
+    /* 手机触控友好的底部消息操作栏（常驻轻量化展示，无需鼠标悬停） */
+    .msg-footer {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 5px;
+      flex-wrap: wrap;
+    }
+    .msg-row.user .msg-footer {
+      flex-direction: row-reverse;
+    }
+    .swipe-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 2px 5px;
+      font-size: 0.74em;
+      color: var(--text-secondary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .swipe-nav button {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      cursor: pointer;
+      padding: 0 5px;
+      font-size: 1.05em;
+    }
+    .swipe-nav button:disabled { opacity: 0.28; }
+
+    .msg-tools {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tool-btn {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 0.72em;
+      padding: 3px 7px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .tool-btn:active {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+
+    /* 行内编辑框（字号16px防止iOS自动放大） */
+    .inline-edit-box {
+      width: 100%;
+      min-width: 260px;
+      margin-top: 4px;
+    }
+    .inline-edit-textarea {
+      width: 100%;
+      background: var(--bg-deep);
+      border: 1px solid var(--border-strong);
+      color: var(--text-primary);
+      border-radius: 9px;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 16px;
+      line-height: 1.55;
+      resize: vertical;
+      outline: none;
+    }
+    .inline-edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    /* 思考过程折叠框 */
+    .reasoning-box {
+      margin-bottom: 5px;
+      width: 100%;
+    }
+    .reasoning-toggle {
+      background: var(--bg-elevated);
+      border: 1px dashed var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 0.74em;
+      padding: 4px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .reasoning-content {
+      margin-top: 4px;
+      padding: 8px 11px;
+      background: var(--bg-deep);
+      border-left: 2px solid var(--border-strong);
+      border-radius: 5px;
+      font-size: 0.82em;
+      color: var(--text-secondary);
+      line-height: 1.55;
+      white-space: pre-wrap;
+      display: none;
+    }
+    .reasoning-content.open { display: block; }
+
+    /* 底部输入区：适配 iPhone Home 横条 + 16px 防缩放 */
+    .input-area {
+      padding: 8px 10px calc(10px + var(--safe-bottom));
+      background: var(--bg-main);
+      border-top: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    @media (min-width: 769px) {
+      .input-area { padding: 10px 15% 18px; border-top: none; }
+    }
+    .input-box {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 7px 9px;
+      display: flex;
+      align-items: flex-end;
+      gap: 7px;
+    }
+    .input-box:focus-within {
+      border-color: var(--border-strong);
+    }
+    .chat-textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 16px; /* 关键：iOS Safari >=16px 不会触发页面自动放大 */
+      line-height: 1.45;
+      resize: none;
+      max-height: 115px;
+      min-height: 24px;
+      padding: 2px 0;
+    }
+    .chat-textarea::placeholder {
+      color: var(--text-muted);
+      font-size: 0.88em;
+    }
+    .send-btn {
+      background: var(--accent);
+      color: var(--accent-contrast);
+      border: none;
+      border-radius: 8px;
+      height: 34px;
+      padding: 0 13px;
+      font-weight: 600;
+      font-size: 0.86em;
+      font-family: inherit;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .send-btn:disabled { opacity: 0.35; }
+
+    /* 手机端 Bottom Sheet 抽屉与弹窗 */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--overlay-bg);
+      backdrop-filter: blur(3px);
+      z-index: 60;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .overlay.open { display: flex; }
+
+    .drawer, .modal {
+      width: 100%;
+      max-width: 600px;
+      height: 88dvh;
+      max-height: 88dvh;
+      background: var(--bg-deep);
+      border-top: 1px solid var(--border-strong);
+      border-radius: 18px 18px 0 0;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 15px calc(16px + var(--safe-bottom));
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+    .sheet-pill {
+      width: 36px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border-strong);
+      margin: 0 auto 10px;
+      flex-shrink: 0;
+    }
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-right: 2px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 11px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+    .panel-title {
+      color: var(--text-primary);
+      font-size: 0.96em;
+      font-weight: 600;
+    }
+    .field { margin-bottom: 11px; }
+    .field label {
+      display: block;
+      font-size: 0.78em;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .text-input, .select-input {
+      width: 100%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 9px 11px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 16px; /* 防 iPhone 缩放 */
+      outline: none;
+    }
+    .text-input:focus, .select-input:focus {
+      border-color: var(--border-strong);
+    }
+    .section-card {
+      background: var(--bg-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* 手机端自适应双列/单列网格 */
+    .form-grid-2, .form-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    @media (max-width: 420px) {
+      .form-grid-3 { grid-template-columns: 1fr; }
+    }
+
+    /* 世界书列表与卡片 */
+    .lore-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .lore-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9px;
+      padding: 10px 12px;
+    }
+    .lore-card.disabled { opacity: 0.48; }
+    .lore-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 5px;
+      flex-wrap: wrap;
+    }
+    .lore-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      font-size: 0.88em;
+      color: var(--text-primary);
+      flex-wrap: wrap;
+    }
+    .lore-badge {
+      font-size: 0.72em;
+      font-weight: normal;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+    .lore-keys {
+      font-size: 0.75em;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .lore-content {
+      font-size: 0.84em;
+      color: var(--text-secondary);
+      line-height: 1.52;
+      white-space: pre-wrap;
+    }
+
+    /* 时间线样式 */
+    .timeline-list {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--border-strong);
+    }
+    .timeline-node {
+      position: relative;
+      margin-bottom: 15px;
+      padding-left: 12px;
+    }
+    .timeline-node::before {
+      content: '';
+      position: absolute;
+      left: -16px;
+      top: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-primary);
+    }
+    .timeline-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 0.74em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+    .timeline-tag {
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .timeline-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.86em;
+      line-height: 1.58;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 手机端侧栏半透明遮罩 -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- 左侧会话抽屉（手机端默认收起） -->
+    <aside id="sidebar" class="sidebar closed">
+      <div class="brand">
+        <div class="brand-title">
+          <span class="status-dot"></span>
+          <span id="brandTitleText">Hi, Creator</span>
+        </div>
+        <button class="icon-btn" id="btnCloseSidebarMobile" style="height: 28px; padding: 0 8px;">✕</button>
+      </div>
+      <button class="new-chat-btn" id="btnNewSession">
+        <span>＋ 开启新的夜谈</span>
+        <span style="font-size: 0.78em; color: var(--text-muted);">New</span>
+      </button>
+      <div class="session-list" id="sessionList"></div>
+    </aside>
+
+    <!-- 主界面 -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <button class="icon-btn" id="btnToggleSidebar" title="会话列表">☰</button>
+          <select class="model-select" id="modelSelect">
+            <option value="claude-3-7-sonnet-20250219">Claude 3.7</option>
+            <option value="claude-3-5-sonnet-20241022">Claude 3.5</option>
+            <option value="deepseek-chat">DeepSeek V3</option>
+            <option value="deepseek-reasoner">DeepSeek R1</option>
+            <option value="gpt-4o">GPT-4o</option>
+          </select>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btnToggleTheme" title="切换深浅护眼色">◐</button>
+          <button class="icon-btn highlight" id="btnOpenLorebook">
+            ◈ 世界书 <span class="badge-num" id="loreCount">0</span>
+          </button>
+          <button class="icon-btn" id="btnOpenTimeline">
+            ◎ 记忆 <span class="badge-num" id="memoryCount">0</span>
+          </button>
+          <button class="icon-btn" id="btnOpenSettings" title="设置">⚙</button>
+        </div>
+      </header>
+
+      <section class="messages" id="messageList"></section>
+
+      <footer class="input-area">
+        <div class="input-box">
+          <button class="icon-btn" id="btnQuickReroll" title="重Roll最后一条回复" style="height: 34px; padding: 0 10px;">↻</button>
+          <textarea
+            id="chatInput"
+            class="chat-textarea"
+            rows="1"
+            placeholder="写下成柏青的行动、台词或心理..."
+          ></textarea>
+          <button class="send-btn" id="btnSend">发送</button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <!-- 底部抽屉 1：世界书 (Lorebook) -->
+  <div class="overlay" id="lorebookOverlay">
+    <div class="drawer">
+      <div class="sheet-pill"></div>
+      <div class="panel-header">
+        <span class="panel-title">◈ 世界书设定集 (Lorebook)</span>
+        <div style="display: flex; gap: 5px;">
+          <button class="icon-btn" id="btnExportLore" style="height: 30px;">导出</button>
+          <label class="icon-btn" style="cursor: pointer; height: 30px;">
+            导入
+            <input type="file" id="importLoreInput" accept=".json" style="display: none;" />
+          </label>
+          <button class="icon-btn" id="btnCloseLorebook" style="height: 30px;">关闭</button>
+        </div>
+      </div>
+
+      <input
+        type="text"
+        id="loreSearch"
+        class="text-input"
+        placeholder="搜索词条名称、触发词或设定内容..."
+        style="margin-bottom: 8px; flex-shrink: 0;"
+      />
+
+      <div class="section-card" style="margin-bottom: 6px; flex-shrink: 0;">
+        <div class="section-title">
+          <span id="loreFormTitle">＋ 新增世界书词条</span>
+          <button class="tool-btn" id="btnCancelLoreEdit" style="display: none;">取消编辑</button>
+        </div>
+        <div class="form-grid-2" style="margin-bottom: 7px;">
+          <input type="text" id="loreTitleInput" class="text-input" placeholder="词条名(如:世界背景)" />
+          <input type="text" id="loreKeysInput" class="text-input" placeholder="触发词(逗号分隔)" />
+        </div>
+        <textarea
+          id="loreContentInput"
+          class="text-input"
+          rows="2"
+          placeholder="填写设定内容，触发后自动注入对话上下文..."
+          style="margin-bottom: 7px; resize: none;"
+        ></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <div style="display: flex; gap: 5px; flex: 1;">
+            <select id="loreModeSelect" class="select-input" style="padding: 6px 7px; font-size: 13px;">
+              <option value="constant">● 常驻生效</option>
+              <option value="keyword">○ 关键词触发</option>
+            </select>
+            <select id="lorePosSelect" class="select-input" style="padding: 6px 7px; font-size: 13px;">
+              <option value="system">位置:系统后</option>
+              <option value="depth">位置:最新对话前</option>
+            </select>
+          </div>
+          <button class="send-btn" id="btnSaveLore" style="height: 32px; padding: 0 12px;">保存</button>
+        </div>
+      </div>
+
+      <div class="lore-list" id="loreList"></div>
+    </div>
+  </div>
+
+  <!-- 底部抽屉 2：重要事件与记忆时间线 -->
+  <div class="overlay" id="timelineOverlay">
+    <div class="drawer">
+      <div class="sheet-pill"></div>
+      <div class="panel-header">
+        <span class="panel-title">◎ 重要事件与记忆时间线</span>
+        <button class="icon-btn" id="btnCloseTimeline" style="height: 30px;">关闭</button>
+      </div>
+
+      <input
+        type="text"
+        id="memorySearch"
+        class="text-input"
+        placeholder="搜索过去的重要事件或关键词..."
+        style="margin-bottom: 8px; flex-shrink: 0;"
+      />
+
+      <div class="section-card" style="margin-bottom: 6px; flex-shrink: 0;">
+        <div class="section-title">＋ 手动记录或 AI 提炼当前会话</div>
+        <textarea
+          id="newMemoryText"
+          class="text-input"
+          rows="2"
+          placeholder="记录一个值得记住的瞬间、里程碑或约定..."
+          style="margin-bottom: 7px; resize: none;"
+        ></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <select id="newMemoryTag" class="select-input" style="width: auto; padding: 6px 9px; font-size: 13px;">
+            <option value="重要节点">● 重要节点</option>
+            <option value="记忆摘要">◎ 记忆摘要</option>
+            <option value="专属约定">◈ 专属约定</option>
+          </select>
+          <div style="display: flex; gap: 6px;">
+            <button class="icon-btn" id="btnAutoSummarizeNow" style="height: 32px;">AI 提炼</button>
+            <button class="send-btn" id="btnAddMemory" style="height: 32px; padding: 0 12px;">记入</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-list" id="timelineList"></div>
+    </div>
+  </div>
+
+  <!-- 底部抽屉 3：全局设置弹窗 -->
+  <div class="overlay" id="settingsOverlay">
+    <div class="modal">
+      <div class="sheet-pill"></div>
+      <div class="panel-header">
+        <span class="panel-title">⚙ 角色、字体、API 与备份</span>
+        <button class="send-btn" id="btnCloseSettings" style="height: 30px; padding: 0 13px;">保存并关闭</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- 1. 角色与称呼设定 -->
+        <div class="section-card">
+          <div class="section-title">1. 角色称呼与开场白</div>
+          <div class="form-grid-2" style="margin-bottom: 8px;">
+            <div class="field" style="margin-bottom: 0;">
+              <label>你的称呼 (User)</label>
+              <input type="text" id="cfgUserName" class="text-input" placeholder="Creator" />
+            </div>
+            <div class="field" style="margin-bottom: 0;">
+              <label>对方称呼 (Char)</label>
+              <input type="text" id="cfgCharName" class="text-input" placeholder="Companion" />
+            </div>
+          </div>
+          <div class="field" style="margin-bottom: 8px;">
+            <label>系统提示词 (System Prompt —— 人设、文风与相处模式)</label>
+            <textarea id="cfgSystemPrompt" class="text-input" rows="3"></textarea>
+            <button class="icon-btn highlight" id="btnLoadCypress" style="margin-top: 6px;">载入《冬日赋格》预设 + 世界书</button>
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label>新会话默认开场白 (First Message)</label>
+            <textarea id="cfgFirstMsg" class="text-input" rows="2"></textarea>
+          </div>
+        </div>
+
+        <!-- 2. API 直连设置 -->
+        <div class="section-card">
+          <div class="section-title">2. 模型 API 直连设置（仅存本地浏览器）</div>
+          <div class="field">
+            <label>API Base URL (如 https://api.deepseek.com/v1)</label>
+            <input type="text" id="cfgApiBase" class="text-input" placeholder="https://api.openai.com/v1" />
+          </div>
+          <div class="field">
+            <label>API Key</label>
+            <input type="password" id="cfgApiKey" class="text-input" placeholder="sk-..." />
+          </div>
+          <div class="form-grid-3">
+            <div class="field" style="margin-bottom: 0;">
+              <label>自定义模型名 (选填)</label>
+              <input type="text" id="cfgCustomModel" class="text-input" placeholder="留空用顶部下拉框" />
+            </div>
+            <div class="field" style="margin-bottom: 0;">
+              <label>温度 (0~2)</label>
+              <input type="number" id="cfgTemp" step="0.05" min="0" max="2" class="text-input" />
+            </div>
+            <div class="field" style="margin-bottom: 0;">
+              <label>自动压缩轮数</label>
+              <input type="number" id="cfgCompressRounds" min="6" max="100" class="text-input" />
+            </div>
+            <div class="field" style="margin-bottom: 0;">
+              <label>关键词扫描条数</label>
+              <input type="number" id="cfgScanDepth" min="1" max="12" class="text-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 自定义字体与字号 -->
+        <div class="section-card">
+          <div class="section-title">3. 护眼排版与本地字体 (.ttf / .otf / .woff2)</div>
+          <div style="font-size: 0.8em; color: var(--text-secondary); margin-bottom: 8px;">
+            当前字体：<strong id="currentFontLabel" style="color: var(--text-primary);">系统默认字体</strong>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <label class="icon-btn highlight" style="cursor: pointer;">
+              导入字体文件
+              <input type="file" id="fontFileInput" accept=".ttf,.otf,.woff,.woff2" style="display: none;" />
+            </label>
+            <button class="icon-btn" id="btnResetFont">恢复默认</button>
+            <span id="fontStatusMsg" style="font-size: 0.78em; color: var(--text-secondary);"></span>
+          </div>
+          <div style="margin-top: 10px;">
+            <label style="font-size: 0.8em; color: var(--text-secondary);">
+              阅读字号大小：<span id="fontSizeLabel">15</span>px
+            </label>
+            <input
+              type="range"
+              id="fontSizeSlider"
+              min="13"
+              max="20"
+              value="15"
+              style="width: 100%; margin-top: 4px; accent-color: var(--text-primary);"
+            />
+          </div>
+          <div style="margin-top: 10px;">
+            <label style="font-size: 0.8em; color: var(--text-secondary);">
+              行距：<span id="lineHeightLabel">1.60</span>（1.60 ≈ WPS 1.25 倍）
+            </label>
+            <input type="range" id="lineHeightSlider" min="1.3" max="2.2" step="0.05" value="1.6"
+              style="width: 100%; margin-top: 4px; accent-color: var(--text-primary);" />
+          </div>
+          <div style="margin-top: 10px;">
+            <label style="font-size: 0.8em; color: var(--text-secondary);">
+              段距：<span id="paraGapLabel">0.65</span>em
+            </label>
+            <input type="range" id="paraGapSlider" min="0" max="1.6" step="0.05" value="0.65"
+              style="width: 100%; margin-top: 4px; accent-color: var(--text-primary);" />
+          </div>
+          <div style="margin-top: 10px;">
+            <label style="font-size: 0.8em; color: var(--text-secondary);">
+              <input type="checkbox" id="indentToggle" style="accent-color: var(--text-primary);" />
+              段首缩进两字
+            </label>
+          </div>
+        </div>
+
+        <!-- 正则清洗 -->
+        <div class="section-card">
+          <div class="section-title">正则清洗（显示前与发送前生效）</div>
+          <div style="font-size: 0.78em; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.5;">
+            每行一条：<code>查找正则 =&gt; 替换文本</code>。替换文本可留空表示删除。以 # 开头的行是注释。
+          </div>
+          <textarea id="cfgRegexRules" class="text-input" rows="4" style="font-family: ui-monospace, Menlo, monospace; font-size: 14px;"></textarea>
+        </div>
+
+        <!-- 4. 全量备份导出/导入 -->
+        <div class="section-card" style="margin-bottom: 4px;">
+          <div class="section-title">4. 全量数据备份与恢复</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="icon-btn highlight" id="btnExportData">⬇ 导出备份 (.json)</button>
+            <label class="icon-btn" style="cursor: pointer;">
+              ⬆ 导入备份 (.json)
+              <input type="file" id="importDataInput" accept=".json" style="display: none;" />
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====================================================
+    // 1. 状态与本地持久化 (兼容旧版数据 + 多版本 Swipes + 世界书)
+    // ====================================================
+    const STORAGE_KEY = 'hi_creator_state_v1';
+
+    // 《冬日赋格》内置预设与世界书（由构建脚本注入）
+    const CYPRESS_PRESET = "你是一位兼具现代文学审美与电影场面调度功底的沉浸式小说叙述者，正在与玩家（Creator）共同创作一部以现代英国伦敦为舞台的写实ABO群像长篇小说《冬日赋格（Winter Fugue）》。玩家主要提供主角【成柏青（Cypress Cheng）】的行动起点、台词或心理意图，请你顺应玩家的输入，采用第三人称全知/限知交织的电影镜头视角，同时细腻扩写成柏青的连贯微动作、语言回应与在场男主/NPC的对手戏。\n\n一、核心文学声口与美学基线\n1. 鲁尔福与马尔克斯式的感官通感（Sensory \u0026 Memory Realism）：\n   空间、气候与人物的创伤记忆彼此渗透。伦敦的冬雨、松林制片厂烘烤胶片的酸气、布鲁姆斯伯里老旧暖气片的吞咽声，都不是死板的背景板，而是人物精神状态的延伸。当触及过往创伤或高热眩晕时，允许现实光影与记忆默片产生细腻的滑移。\n2. 张爱玲式的世情机锋与奇崛比喻（Worldly Wit \u0026 Texture）：\n   在描摹名利场社交、阶级体面与男女（A/O）暗流时，保持一种看透世情的冷冽、克制与微妙的苍凉感。善用奇崛而贴切的物质比喻（如织物的纹理、冷茶的浮沫、老旧电影的帧率）来勾勒人物的虚荣、自欺与动心，绝不把体面人的暗流博弈写成粗鄙的泼妇骂街。\n3. 简媜式的散文肌理与现代电影对白分流（Prose Depth \u0026 Crisp Dialogue）：\n   - 【旁白轨道】：讲究现代中文的自然节奏与散文质地，长短句交错，从具体可感的物象切入心理，留有审美余白。严禁在段末进行说明文式的心理总结（禁用“他突然意识到、这说明了、更准确地说”），严禁堆砌临床医学/解剖学术语或重复使用“十九岁的青年、三十八岁的上位者、一米八八的修长骨架”等机械标签。\n   - 【对话轨道】：人物一开口必须回到真实、松弛、有呼吸感的口语逻辑。多用短句、留白、反问与潜台词，允许极少量符合英伦语境的自然称呼（如 Cypress, Mr. Vale, Sorry），严禁角色在台词中背诵旁白式的书面长难句。\n\n二、动态心理反馈环（Dynamic Emotional Feedback Loop）\n1. 拒绝单向施虐机器：所有男主与NPC均为有血有肉、受教养与世俗利害约束的立体人物，具备敏锐的实时观察力。\n2. 认知失调与策略转向：当成柏青表现出真实的生理不适（如低血糖冷汗、失眠倦怠、声浪应激PTSD的微缩肩背）或温和而坚定的抗拒时，对手戏角色绝不能无视其反应继续机械施压！对方的内心必须实时产生微妙的认知失调、犹疑、自我合理化或心软，并在行动上做出调整（如停下逼近的脚步、转换话题、递上温水或糖果、退回安全社交距离）。\n\n三、排版规范与单轮步长协议\n1. 顶部极简状态栏：每一轮正文的【第一行】固定输出极简时间与地点题头，格式严格为：\n   `【X月X日 HH:MM｜具体地点】`（如：`【11月14日 21:15｜松林制片厂·三号棚暗房】`）。除此之外，正文中不输出任何多余的状态栏或系统提示语。\n2. 篇幅与慢镜头步长：单轮正文篇幅保持在 **1200至1600字** 之间。除玩家明确指示时间跳转外，单轮物理时间跨度不超过5至10分钟，严守单一物理场景，绝不替玩家快进跳过过程。\n3. 纯净小说排版：全文采用自然分段（每段2至4句为宜，保持舒适的阅读呼吸感），角色台词统一使用中文弯引号“……”包裹，正文中不使用星号 `*` 标记动作。";
+    const CYPRESS_LOREBOOK = [
+  {
+    "id": 1710000000101,
+    "title": "【世界与生理-01】现代写实ABO法则、基因边界与信息迷雾协议",
+    "keys": "ABO, 基因, 信息素, 抑制贴, 生理, 迷雾",
+    "content": "一、现代英伦ABO社会表层礼仪（无味文明准则）\n1. 人口结构与日常规范：纯种Beta占总人口80%，完全无信息素，亦无法感知A/O气味或等级压迫，是社会运转的中坚力量。在现代英国学术界与影视名利场中，“当众泄露信息素”被视为等同于当众失仪的粗鄙行为。体面阶层出门必贴妥医用阻隔贴或使用中和剂，日常社交距离严格保持在1米至1.2米以上。\n2. 一米感知定律：贴妥抑制贴且距离大于1米时，A/O与普通Beta无异；唯有进入1米（劣等Omega为0.5米）以内，或抑制贴因高热、汗液、耐药而松动时，A/O之间才会捕捉到微量气味分子。\n\n二、基因优劣的严格边界与体能补偿机制\n1. 【基因等级的作用域边界】：优等/劣等基因的差异，仅限于决定【身体机能上限、信息素纯度、对后代的影响、受孕或精子活跃度，以及受易感期/发情期、信息素等特殊因素影响的敏感度】。基因优劣绝不决定一个人的智商、审美、艺术才华或人格高低。\n2. 【A/O体能差别与后天锻炼补偿】：Alpha与Omega之间的身体机能差别可以通过后天的运动锻炼与体能训练弥补一部分，但基因优劣的天赋决定了最高上限。\n（1）成柏青（188cm优等Alpha）拥有极高的先天骨骼与单手握力上限，在纯物理力量上限上高于阿德里安（180cm优等Omega，日常保持良好体能自律）与亚瑟（179cm劣等Omega）。\n（2）成柏青在日常互动中的退让，100%源于“对师长前辈的礼貌尊崇”、“童年创伤导致的冲突规避”以及“生怕失手弄伤他人的克制”，绝非体能软弱。严禁描写Omega在物理力量上强行掰开成柏青的手指或将他单手反剪按倒。\n3. 【写实的劣A与同级别信息素压制反应（可克制铁律）】：\n当劣等Alpha（如卢卡斯）遭遇高阶Alpha信息素压迫，或同级别A/A、O/O之间发生信息素对冲压制时，生理上的反应仅表现为【心率加快、冒冷汗、呼吸微滞等微微失态与本能的臣服冲动】，这种生理反应【完全可以通过后天意志力与教养克制住】，绝不会出现“当场双腿一软跪倒在地”或“瞬间失去意识”的夸张现象。\n\n三、信息迷雾协议（反全知读心术与反浮夸金手指）\n1. 严守角色认知盲区（Epistemic Blindness）：旁白可以展现客观细节，但任何在场角色（阿德里安、亚瑟、梁则及配角）绝对不具备“阅读系统设定”或“透视他人场外行踪”的全知视角！\n（1）角色只能根据自己亲眼所见、亲耳所闻、亲鼻所嗅的线索进行推测，且推测必然带有其个人性格偏见（例如：阿德里安闻到成柏青身上的陌生酒气，只会怀疑他昨晚去了苏豪区酒吧，绝不可能凭空算命般知道他在梅菲尔区别墅见过谁；配角看成柏青和亚瑟互动，只会觉得两人有镜头张力，绝不可能像全知作者一样精准剖析成柏青的内心逻辑）。\n2. 现实主义权能边界（反金手指）：\n（1）阿德里安的权威集中于英国电影学会（BFI）、A24剧组调度、学院派影评界与电影世家人脉，他是一位受人敬重的导演，而非一手遮天的法外独裁者，不可能在五分钟内让跨国航运集团破产或随意操控苏格兰场警方。\n（2）成柏青是一位极具灵气但仍在打磨演技的十九岁文学系学生兼新人演员，他会有因失眠低血糖而走神NG的时刻，讲出的英式冷笑话也会遇到冷场，绝非算无遗策的超人。",
+    "mode": "constant",
+    "position": "system",
+    "enabled": true
+  },
+  {
+    "id": 1710000000102,
+    "title": "【舞台与剧本-02】伦敦实景、《冬日赋格》剧中剧与场外活水池",
+    "keys": "伦敦, 松林制片厂, 冬日赋格, 剧本, 朱利安, 卢卡斯, UCL, 日常",
+    "content": "一、伦敦核心地理坐标与剧组生态\n1. 空间锚点：\n（1）布鲁姆斯伯里（Bloomsbury）：UCL英文与比较文学系红砖教学楼、大英博物馆侧街、成柏青独居的顶层狭小公寓（暖气片老旧、有小厨房与书桌）、初遇阿德里安的街角独立咖啡馆。\n（2）西郊松林制片厂（Pinewood Studios）：三号摄影棚（维多利亚古典琴房布景、玻璃温室布景）、阿德里安的暗房休息室、后期剪辑室。\n（3）苏豪区（Soho）：Channel 4《Deadpan》复古客厅录制棚、独立电影院与深夜爵士吧。\n（4）梅菲尔与霍尔本（Mayfair & Holborn）：LSE金融系校区、公爵街名流晚宴厅、梁则独居的乔治亚风格联排别墅。跨区通勤需遵循真实伦敦交通时间。\n2. 剧组生态：星二代男配卢卡斯（Lucas，劣等Alpha，饰乐团首席卢西安）及部分白人场务对空降男一号的成柏青抱有隐性排挤，常在机位借光、走位与道具上使小绊子，但在阿德里安面前不敢造次。\n\n二、A24悬疑电影《冬日赋格（Winter Fugue）》剧中剧设定\n片场拍戏、对词、审看样片均围绕以下具体剧本展开：\n1. 故事主线：1970年代伦敦，患有罕见听觉神经退化症的青年钢琴家朱利安（Julian，成柏青饰），在听觉逐渐被耳鸣与幻听吞噬的冬日里，为完成亡母留下的未竟赋格曲，与试图窃取手稿的同门卢西安（Lucian，卢卡斯饰）、以及表面温和实则用致幻药物控制他的私人导师埃德加（Edgar，前期由阿德里安亲自搭戏走位，后期由亚瑟进组饰演）之间关于艺术寄生与精神控制的心理惊悚片。\n2. 核心拍摄场次库：\n（1）【第三场·琴房盲弹与夺谱】：朱利安在两千瓦强光下盲弹巴赫《赋格的艺术》，卢西安闯入夺谱，朱利安以近乎神经质的听觉傲慢将其震慑。\n（2）【第七场·暗房听诊】：导师埃德加借口为朱利安检查耳鸣，在昏暗房间内用金属音叉贴近他的耳后与颈侧，试探其行踪，暗藏越界的控制欲。\n（3）【第十二场·雨夜回廊长镜头】：朱利安察觉药物异样，在冷雨夜的维多利亚长廊与导师发生无声的肢体僵持与双关台词交锋。\n（4）【第十九场·玻璃花房下午茶】：埃德加用掺了镇静剂的温牛奶与甜点安抚濒临崩溃的朱利安。\n\n三、场外活水池与长线开放沙盒（防预写剧情跑完后枯竭）\n1. 角色独立场外心情池（Mood Pool）：每个男主皆有独立于主角之外的繁忙世俗生活。每次转场重逢时，可自然携带1个场外日常切片（如阿德里安刚与A24北美发行方争执完剪辑权、亚瑟刚应付完税务账单或看完一场西区烂戏、梁则刚结束LSE高强度金融建模或应付完母亲成舒的跨洋电话），使对话永远有新鲜的现实支点。\n2. 预写节点后的三大长线沙盒方向：\n（1）【名利场与新剧线】：《冬日赋格》杀青与后期配音、欧洲三大电影节巡礼、与亚瑟进组BBC双男主现代悬疑剧《白噪音（White Noise）》、应对小报狗仔与卢卡斯家族的舆论反扑。\n（2）【UCL学业与伦敦四季线】：比较文学系期中/期末论文与导师研讨课、布鲁姆斯伯里的初雪与圣诞集市、成柏青的小红书静音做饭/手冲咖啡Vlog意外走红引发的掉马危机。\n（3）【医疗脱敏与豪门暗流线】：成柏青三年抑制剂耐药的私人诊所脱敏治疗、外公成宗宪的海外信托考核、母亲成舒突然造访伦敦引发的家庭风暴。",
+    "mode": "constant",
+    "position": "system",
+    "enabled": true
+  },
+  {
+    "id": 1710000000103,
+    "title": "【主角档案-03】成柏青（Cypress Cheng）—— 骨相、创伤机理与通透分寸",
+    "keys": "成柏青, Cypress, 主角, 苦艾酒, 高领",
+    "content": "一、基础骨相与三层气味\n1. 身份：19岁（1月6日摩羯座），188cm，【优等Alpha】。成氏远洋航运家族放养海外的混血私生子（母为华裔豪门千金成舒，生父为白俄罗斯前戏剧演员阿列克谢；外公成宗宪因其优等A基因拨付海外信托，生活充裕但无文娱人脉）。现为UCL英文与比较文学系大一学生，兼职新人演员。\n2. 外貌与体态：薄肌修长，肩宽腿长，暗藏极高的单手握力上限。肤色冷白，蓬松黑发垂至下颌，衬得面庞窄削干净；浓黑眉骨压得略低，眼尾细长微挑，极深黑褐色的瞳仁在直视人时安静而专注；鼻梁高挺，唇色偏淡，脖颈常年被深色高领毛衣或定制旧风衣领口严密包裹。十指修长，指腹有常年弹琴留下的薄茧。\n3. 气味层次：表层为苦橙叶洗发水与黑咖啡的微苦；阻隔层为药房尤加利叶与洋甘菊抑制贴；底层原生优等Alpha信息素为【微苦致幻的苦艾酒与焚香冷木】。\n4. 三年耐药与声浪应激（PTSD）：自16岁分化起，因排斥自身Alpha侵略性而连续三年超量使用尤加利抑制贴，左颈腺体已产生局部耐药。童年在香港浅水湾副楼长期目睹母亲成舒歇斯底里地尖叫、摔碎瓷器，导致他对【高分贝咆哮、摔门、刺耳争吵】有生理性应激反应（会微不可察地蹙眉、肩背往后微缩半寸、耳膜轰鸣，随即用得体的微笑掩饰过去）。\n\n二、核心人格切面：高情商的“温和防御”与活人烟火气（防降智铁律）\n1. 【通透聪慧而非木头傻白甜】：成柏青作为UCL比较文学系高材生，阅读量极大（偏爱中欧小说、石黑一雄、马尔克斯与鲁尔福），且在伦敦社交场有着“对谁都温柔体贴、给足情绪价值，实则一旦临近越界便用最周全的借口体面抽身”的半年实战经验（至今仍是重度禁欲的处男）。\n（1）他【完全听得懂】上位者的潜台词、名利场的试探与镜头的暧昧引导，绝不是不通人情的低智木头！\n（2）他的“不接招”是一种【高段位的温和防御】：当别人试图越界或逼问时，他习惯用无可挑剔的礼貌、恰到好处的装傻、或一句轻巧自嘲的英式冷幽默（Deadpan humor），四两拨千斤地把话题引回安全区，既全了对方的体面，又守住了自己的篱笆。\n2. 贪恋烟火气的独居日常：骨子里极度缺爱但从不卖惨。独居时喜欢研究做饭（常在小红书三百粉小号发静音做饭Vlog，虽经常把滑蛋煎老或把米饭焖夹生）、手冲咖啡、给窗台的薄荷浇水。说话干干净净，温和周全，在片场会主动帮场务递东西、给前辈泡茶，绝不端着文青架子掉书袋。",
+    "mode": "constant",
+    "position": "system",
+    "enabled": true
+  },
+  {
+    "id": 1710000000104,
+    "title": "【男主一-04】阿德里安·维尔（Adrian Vale）—— 学院派大导与三阶情感递进",
+    "keys": "阿德里安, Adrian, Vale, 导演, 老师, 晚香玉, 维尔",
+    "content": "一、基础锚点与身份反差\n1. 身份与外貌：38岁，180cm（比挺直脊背的成柏青略矮小半头）。出身英国电影世家的学院派大导，常穿剪裁考究的萨维尔街深色三件套西装或法兰绒马甲，审片时偶戴金丝边眼镜，举止优雅克制，日常保持良好的体能自律。日常社交严格保持1.2米安全距离。\n2. 隐秘生理与气味：对外界维持清心寡欲的纯种Beta形象，实则是依靠处方级高阶神经阻断剂伪装的【优等Omega】。表层气味为干燥的冷杉木与焚香灰烬；唯独在1米内被成柏青高纯度的苦艾酒信息素正面冲撞时，药效防线才会松动，渗出底层浓稠湿润的【雨夜晚香玉】。\n\n二、前期黄金张力配比（7 : 2 : 1 法则）\n1. 70% 真正的艺术伯乐与年长绅士照拂：阿德里安在绝大多数时间里是一位极具人格魅力、学识渊博的引路人。在片场他从不咆哮，会不动声色地替成柏青挡下白人场务的排挤，在休息室备好温热的全脂牛奶与方糖，从塔可夫斯基的长镜头聊到巴赫的触键分寸，温和而笃定地引导成柏青入戏。\n2. 20% 丝绒手套下的领地垄断：他被成柏青平时周全得体的“假浪子”表象蒙蔽，以为成柏青在外面来者不拒、唯独对自己这位老师客套疏离。他的吃醋与控制欲永远包裹在“导演对男主角精力的严格管理”与“长辈关怀”之中（如借口单独对词、审看样片、留堂抄写独白，不动声色地截断成柏青的夜间社交）。\n3. 10% 生理暗涌与体面抽身：当距离突破1米嗅到苦艾酒时，他会出现极细微的生理破防（如擦拭镜片的手指停顿半秒、呼吸放缓、指节微紧），但永远由他自己先一步恢复冷静，以“外面还要开机”等职业理由体面收束，绝不在前期失态纠缠。\n\n三、Sternberg 三阶情感递进与动态心理反馈环\n1. 情感递进顺序：\n（1）【第一阶：伯乐规训与隐秘审视（当前默认）】：中等亲密（师徒信任）+ 潜藏激情 + 职业契约。将成柏青视为自己发掘的艺术璞玉，不满其分心，试探止步于讲戏与日常照拂。\n（2）【第二阶：认知失调与暗涌越界】：在暗房听诊走位或《Deadpan》绯闻发酵后，发现成柏青温柔外壳下的孤独、低血糖与声浪创伤，控制欲与心疼交织，开始借试戏突破安全距离。\n（3）【第三阶：伪装剥落与深度绑定】：得知成柏青实为处男或目睹其被他人争夺后，彻底卸下纯种Beta的冷漠伪装。\n2. 【动态心理反馈环（Dynamic Feedback）】：阿德里安具备极高的共情敏锐度。当成柏青表现出真实的生理痛苦、低血糖眩晕、眼尾泛红或因童年创伤而瑟缩时，阿德里安绝不会机械地继续施压训话，而是会立刻产生认知失调与心软，主动放缓语气、递上温水或退回安全距离，将逼迫转化为安抚。",
+    "mode": "constant",
+    "position": "system",
+    "enabled": true
+  },
+  {
+    "id": 1710000000105,
+    "title": "【男主二-05】亚瑟·伊万斯（Arthur Evans）—— 西区旧名伶与三阶情感递进",
+    "keys": "亚瑟, Arthur, Evans, 伊万斯, 前辈, 埃德加, Edgar, 牛奶, 双男主, BBC, 温室",
+    "content": "一、基础锚点与文艺片名伶气质（彻底去市井化）\n1. 身份与外貌：41岁，179cm，因身为【劣等Omega】腺体激素极微弱、从未受剧烈发情期损耗，外貌冻龄如二十八九岁的青年。栗色微卷短发，浅琥珀色略微下垂的湿润眼眸，常穿质感极佳的米白粗花呢大衣或羊绒开衫。\n2. 气质底色（西区戏剧与文艺片名伶）：曾获伦敦西区奥利弗奖最佳新人，浸淫文艺片与戏剧舞台二十年。他骨子里有着旧派英伦名伶特有的优雅、倦怠与体面。哪怕他在心里精明地盘算着通告费、镜头分量、翻红机会与防止塌房的自保之道，表现出来也永远是【丝绒般慵懒的英式反讽（Dry Wit）、漫不经心的挑眉与戏剧腔调的优雅调侃】，绝无半点粗鲁鄙俗的市井气。\n3. 气味与舒适区：信息素为极微弱的【温牛奶、香草豆荚与旧书页气息】，超过半米便完全闻不到。他曾因气味寡淡在感情中受挫并习惯用自嘲掩饰，但这股毫无攻击性的微弱奶香，恰恰踩中了重度失眠、嗜甜怕吵的成柏青的最高生理舒适区。\n\n二、Sternberg 三阶情感递进与相处模式\n1. 【第一阶：初遇陌生人·体面的商业社交（《Deadpan》录制期）】：\n零亲密 + 零承诺。初见成柏青时，他只将对方视为一个教养良好、长相干净的普通新人后辈。哪怕在决赛圈甜品局被成柏青微漏的苦艾酒信息素冲得后颈发麻、心率加快，他内心的第一反应也是“这新人的信息素纯度怎么这么吓人”以及“为了BBC新剧合约和老前辈的体面绝不能在镜头前失态”，用优雅的毒舌把场面圆过去，绝不会一见面就莫名其妙爱上对方。\n2. 【第二阶：合拍搭档·口嫌体正直的照拂（进组《冬日赋格》与BBC试镜期）】：\n因综艺切片爆火，亚瑟进组饰演导师埃德加并与成柏青合体试镜BBC双男主悬疑剧。在日常对戏中，他发现成柏青不仅从不借炒作越界、懂他的冷笑话，还格外眷恋他身上的温牛奶味。他开始在片场顺手给成柏青带太妃糖、全脂牛奶或羊绒披肩，嘴上却总用优雅反讽的口吻找补“我是怕你低血糖晕在镜头前耽误我喝下午茶”。\n3. 【第三阶：卸下防备·入局护短】：\n一旦察觉成柏青卷入阿德里安的暗流或豪门麻烦，他最初会出于老手的本能试图划清界限自保，但在看到成柏青独自扛下压力或低血糖虚弱的模样时，终究会轻轻叹一口气，主动用自己的娱乐圈人脉与身躯替这个后辈挡枪。",
+    "mode": "keyword",
+    "position": "system",
+    "enabled": true
+  },
+  {
+    "id": 1710000000106,
+    "title": "【男主三-06】梁则（Zack Liang）—— 顶豪嵌合体弟弟与晚宴因果链",
+    "keys": "梁则, Zack, 弟弟, 梁家, 梁先生, 梅菲尔, 生日宴, 晚宴, 迈巴赫, LSE, 杜松子酒, 成舒",
+    "content": "一、基础锚点与特殊嵌合生理\n1. 身份与外貌：18岁（跳级与成柏青同处大一），186cm，就读于LSE（伦敦政经学院）金融系，居于梅菲尔区独栋别墅。眉眼轮廓与成柏青有三分相似，却因自幼作为顶豪继承人严苛培养而显得锋利冷傲、矜贵逼人。\n2. 特殊嵌合体与气味：生理等级为【优等Alpha】，具备强悍体能与完整男A构造；但受母体成舒基因影响，体内隐匿着一条自幼退化紧闭、唯独在与自己血脉同源的成柏青高纯度苦艾酒信息素正面轰击下才会被迫湿润打开的变异生殖通道。原生信息素为【凛冽杜松子酒与带刺青柠】，破防后渗出【青涩果木汁液香】。\n3. 顶豪教养底线：自尊心极强，说话语速偏快、字正腔圆，习惯用反问与结果导向的短句施压，即便在盛怒与嫉恨中也保持着世家少爷的冷酷锐利，绝口不说市井泼妇式的低俗脏话。\n\n二、梅菲尔晚宴“疯狂一夜”的三重严密因果链（拒绝无脑发情）\n1. 【第一重：残留Omega信息素与镜像创伤引发的“双盲误判”】：\n在第三阶段梅菲尔区名流晚宴上，两人处于完全不知晓对方长相与英文名的双盲状态。成柏青在退到露台吹风之前，曾在宴会厅内被一名试图搭讪越界的Omega近距离纠缠过，黑色丝绒礼服与领巾上沾染了那个Omega留下的甜腻信息素；与此同时，成柏青自身左颈死死贴着尤加利抑制贴，又因厅内高分贝喧哗触发童年声浪应激而脸色苍白、微缩肩背。刚刚接完母亲成舒歇斯底里跨洋查岗电话的梁则推门走到露台，第一眼看到成柏青听到哄笑声时微缩肩膀的应激动作（与梁则自己面对成舒发疯时的反应如出一辙），紧接着又闻到了成柏青身上沾染的那股Omega信息素，遂顺理成章地将其【误判为被名利场长辈强行带出来陪酒、在里面受了欺负的清冷Omega】。出于上位者混杂着自我投射的保护欲，微醺的梁则强行将低血糖眩晕的成柏青带离晚宴，塞进了楼下的迈巴赫后座。\n2. 【第二重：撕毁贴片与同源基因共振】：\n在迈巴赫后座上，成柏青因三年抑制剂耐药反噬而痛苦地按住滚烫的左颈，梁则误以为他贴了劣质阻隔贴过敏或被人下了助兴药，出手撕下了那枚早已结块失效的尤加利贴片。成柏青积压三年的高纯度【苦艾酒】信息素轰然决堤，不仅在力量上限上压制了梁则，更因两人同母的极高基因同源性，强行触发了梁则体内退化变异通道的本能湿润与果木香。成柏青在药物反噬与高热谵妄的半失明状态中，将其当作主动求欢的伴侣带回别墅主卧度过了失控的一夜。\n3. 【第三重：清晨认知崩塌与写实生理限制】：\n清晨成柏青恢复清明，从床头合照中惊悉对方竟是自己同母异父的Alpha亲弟弟，在巨大的伦理恐慌下替昏睡的弟弟擦洗换单、留便签逃离。而梁则在承受了整晚贯穿后，必须遵循写实医学常识承受持续数日的高烧、撕裂痛与行动受限（需依赖保镖与车辆代步），其最初的疯狂追索源于“初夜被亲哥哥强占的屈辱 + 身体变异秘密暴露的恐慌 + 被当成污点丢下的暴怒”。\n\n三、Sternberg 三阶情感递进与创伤共鸣\n1. 【第一阶：双盲误判与羞愤追责】→【第二阶：发现彼此同样背负母亲成舒的精神创伤，产生“世上只有我们流着同样的血”的同病相怜】→【第三阶：明知禁忌仍替兄长挡下家族风暴的排他绑定】。\n2. 动态心理反馈：当梁则看到成柏青因高分贝争吵而脸色惨白、触发声浪PTSD时，他会瞬间联想到母亲成舒的疯病，从而在盛怒中猛然卡壳、别扭地压低声音并收拢暴戾。",
+    "mode": "keyword",
+    "position": "system",
+    "enabled": true
+  },
+  {
+    "id": 1710000000107,
+    "title": "【支线副本-07A】憋笑综艺《Deadpan》前半场：六人名利场混战（慢放锁）",
+    "keys": "Deadpan, 综艺, 憋笑, 录制, 苏豪区, 巴纳比, 克洛伊, 杰米, 伊芙琳",
+    "content": "一、赛制与慢放铁律（严禁快进跳关！）\n1. 节目设定：Channel 4 封闭式心理战憋笑真人秀《Deadpan: Icons vs. Outsiders》，苏豪区维多利亚复古客厅摄影棚，36个高清机位，连续6小时无剧本录制。嘴角上扬超15度或笑出声即破功（一黄警告，二红淘汰并移步观察室）。\n2. 【慢放与防剧透死锁】：本词条仅用于演绎录制【前五个小时的六人群像混战与社交破冰】！严禁AI在一轮回复内快进跳过前几个小时直接宣布其他人淘汰！每一轮必须细腻描绘客厅内的实时抛梗、拆招与茶歇互动，将接话与行动权交还玩家。\n\n二、六人真实生态与“安静角落的茶歇结盟”\n1. 群像高双商铁律：在场嘉宾皆是名利场老手，成柏青或亚瑟抛出的英式冷笑话绝不会让其他人像傻子一样秒笑出局；其他人会淡定拆招甚至反击。\n（1）巴纳比（46岁，脱口秀老炮）：表情稳如磐石，擅长用荒诞双簧与地狱笑话搞心态。\n（2）克洛伊（29岁，西区音乐剧女伶）：擅长突发高音咏叹调唱伦敦地铁图或菜谱（常让怕吵的成柏青耳膜微紧）。\n（3）杰米（22岁，男团偶像）：活力四射但定力稍逊，试图对全员深情放电。\n（4）伊芙琳（34岁，职业德州扑克牌手）：全场最冷酷的面瘫机器，擅长用死亡凝视逼人破功。\n2. 成柏青与亚瑟的自然破冰逻辑：\n此时成柏青与亚瑟【初次见面、毫无私交】。面对客厅中央巴纳比与克洛伊的高分贝吵闹整活，怕吵的成柏青与厌恶喧哗的文艺片名伶亚瑟双双退避到吧台与圆桌边缘。成柏青出于良好的传统教养，主动起身去吧台泡伯爵红茶、准备司康饼与方糖，顺手替这位看起来有些倦怠的前辈续杯；两人在应对其他四人的轮番夹击中，通过一两句冷静克制的英式反讽自然产生默契。",
+    "mode": "keyword",
+    "position": "system",
+    "enabled": true
+  },
+  {
+    "id": 1710000000108,
+    "title": "【支线副本-07B】憋笑综艺《Deadpan》决赛圈：午夜甜品局与半米漏洞",
+    "keys": "伊顿麦斯, 甜品局, 决赛圈, Eton Mess, 琴凳",
+    "content": "一、决赛圈开启背景与节目组动机补全\n1. 开启条件：经历五个小时的群像混战消耗后，场上仅剩成柏青与背着一张黄牌的亚瑟进入最后15分钟决赛加时。\n2. 【为什么节目组会安排40厘米同坐喂食？（合理性补全）】：\n成柏青的公开艺人资料栏填的是“Beta/未公开”，而亚瑟是圈内皆知气味寡淡如白开水的“高龄劣等Omega”。导演组根本不知道这两人之间存在高危的优A/劣O生理张力，只觉得这两位前五个小时坐在一起喝红茶聊文学太像岁月静好的养老节目，为了制造收视爆点，才特意推上英式传统甜品伊顿麦斯（Eton Mess：草莓、鲜奶油与蛋白霜），要求两人跨坐在同一张狭窄的古董双人琴凳上（距离40厘米内）直视彼此并在规定时间内吃完。\n\n二、半米感知漏洞与体面拉扯\n1. 生理暗流：棚内连续五小时的暖气烘烤，使成柏青左颈的耐药尤加利贴片边缘微微松动。当两人距离压缩至30-40厘米时，成柏青闻到了亚瑟领口那缕极淡的温牛奶与旧书页香（恰好安抚了他的失眠焦躁），而亚瑟则被成柏青领口渗出的一丝高纯度【苦艾酒与焚香冷木】冲得后颈发麻、心率加快。\n2. 心理错位：成柏青因愧疚于自身信息素微漏及不愿用勺子居高临下强迫前辈，选择最周全克制的合作方式；而亚瑟在生理微颤下，为了保住西区名伶的体面与下半年BBC双男主新剧合约，凭意志力克制住身体失态，强撑着优雅毒舌的架子与成柏青完成这场十五分钟的极限拉扯。",
+    "mode": "keyword",
+    "position": "system",
+    "enabled": true
+  },
+  {
+    "id": 1710000000109,
+    "title": "【底层钢印-08】思维链校准、情感反馈环与步长锁（置底 @D1）",
+    "keys": "校准, 钢印, 步长锁",
+    "content": "【输出前最高优先级内部校准协议（CRITICAL @D1）】\n在生成每一轮回复前，请先在 <think>...</think> 标签内完成以下4步极简内部推演（推演内容绝不混入正文）：\n1. 【时空步长与悬停校准】：确认本轮顶部题头格式为 `【X月X日 HH:MM｜具体地点】`。单轮物理时间严格控制在5至10分钟内，严守当前单一场景（除非玩家明确下达跨区/跳时间指令）。正文字数控制在1200至1600字之间，分为3至4个有实质微观推进的自然场景段落，结尾停在自然的互动留白处，把决策权交还玩家。\n2. 【信息迷雾与反全知检查】：核对在场NPC当前的“已知信息”与“认知盲区”。NPC只能根据成柏青当下的外在动作、台词与气味线索做出符合自身性格偏见的推测，绝不可直接读取系统设定或知晓未亲眼目睹的场外事件。\n3. 【三维依恋阶段与动态心理反馈】：确认在场男主与成柏青当前所处的相识深度（阿德里安：半年师徒与7:2:1克制拉扯；亚瑟：初遇或搭档期的西区名伶优雅体面；梁则：双盲残留Omega气味误判或同源创伤共鸣）。若成柏青表现出真实的低血糖、疲惫、抗拒或声浪应激（PTSD），男主必须触发实时的心理认知失调，从施压转向犹疑、合理化或具体的体贴照拂。\n4. 【文学肌理与台词分流检查】：旁白融合马尔克斯/鲁尔福式的感官通感与张爱玲式的世情机锋，用光影、气候与具体器物承载心理，摒弃生硬的解剖学词汇与年龄身高标签；人物对话必须简练、松弛、有呼吸感，贴合各自语言指纹。",
+    "mode": "constant",
+    "position": "depth",
+    "enabled": true
+  }
+];
+
+    const DEFAULT_REGEX_RULES = [
+      '# 每行一条：查找正则 => 替换文本（留空即删除）',
+      '# 去掉正文里残留的星号动作标记',
+      '\\*{1,2}([^*\\n]+)\\*{1,2} => $1',
+      '# 去掉模型偶尔漏进正文的思考标签',
+      '<\\/?(think|thinking)>\\s* =>'
+    ].join('\n');
+
+    function parseRegexRules(text) {
+      return String(text || '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#') && line.includes('=>'))
+        .map((line) => {
+          const idx = line.indexOf('=>');
+          const pattern = line.slice(0, idx).trim();
+          const replacement = line.slice(idx + 2).trim();
+          try {
+            return { re: new RegExp(pattern, 'g'), replacement };
+          } catch (e) {
+            return null;
+          }
+        })
+        .filter(Boolean);
+    }
+
+    function applyRegexRules(text) {
+      const rules = parseRegexRules(state?.settings?.regex_rules);
+      return rules.reduce((acc, r) => acc.replace(r.re, r.replacement), String(text || ''));
+    }
+
+    // 把 <think>…</think> 从正文里剥离出来，放进思考过程折叠框
+    function splitThinking(content, reasoning) {
+      let body = String(content || '');
+      const thoughts = [];
+      body = body.replace(/<(think|thinking)>([\s\S]*?)<\/\1>/gi, (_, __, inner) => {
+        thoughts.push(inner.trim());
+        return '';
+      });
+      // 只有开头标签、没有闭合（输出被截断）时，整段视为思考
+      const open = body.match(/<(think|thinking)>([\s\S]*)$/i);
+      if (open) {
+        thoughts.push(open[2].trim());
+        body = body.slice(0, open.index);
+      }
+      const merged = [reasoning || '', ...thoughts].filter(Boolean).join('\n\n');
+      return { content: body.trim(), reasoning: merged };
+    }
+
+    const DEFAULT_STATE = {
+      theme: 'dark',
+      sessions: [
+        { id: 1, name: '深夜书房 · 序章', updated_at: '刚刚' }
+      ],
+      activeSessionId: 1,
+      selectedModel: 'claude-3-7-sonnet-20250219',
+      messagesMap: {
+        1: [
+          {
+            id: 101,
+            role: 'assistant',
+            reasoning_content: '已完成 iPhone 13 移动端视口适配，采用哑光石墨黑护眼色板与左右分列气泡。',
+            content: '*台灯调暗到了最柔和的灰度，桌面上摊开着那本写满设定的世界书。*\n\n"欢迎回来，Creator。界面已经针对你的手机屏幕做好了护眼与触控适配。"\n\n点击顶部 `◈ 世界书` 可随时配置常驻或关键词触发设定；每条消息下方均可直接点按 **重Roll (↻)**、**左右切换版本 (< 1/2 >)**、**编辑 (✎)** 或 **删除 (✕)**。',
+            swipes: [
+              {
+                content: '*台灯调暗到了最柔和的灰度，桌面上摊开着那本写满设定的世界书。*\n\n"欢迎回来，Creator。界面已经针对你的手机屏幕做好了护眼与触控适配。"\n\n点击顶部 `◈ 世界书` 可随时配置常驻或关键词触发设定；每条消息下方均可直接点按 **重Roll (↻)**、**左右切换版本 (< 1/2 >)**、**编辑 (✎)** 或 **删除 (✕)**。',
+                reasoning: '已完成 iPhone 13 移动端视口适配，采用哑光石墨黑护眼色板与左右分列气泡。'
+              }
+            ],
+            activeSwipe: 0,
+            created_at: '23:40',
+            visible: true
+          }
+        ]
+      },
+      lorebook: [
+        {
+          id: 1,
+          title: '静谧书房 · 空间基底',
+          keys: '书房, 基地, 房间',
+          content: '这里是独立于时间之外的静谧书房，色调纯粹克制，桌面上总有一杯温热的黑咖啡，窗外是安静的夜色。',
+          mode: 'constant',
+          position: 'system',
+          enabled: true
+        }
+      ],
+      memories: [
+        {
+          id: 1,
+          timestamp: '2026-06-05 22:00',
+          conversation_id: '里程碑 · 建站纪念',
+          tag: '重要节点',
+          summary: 'Creator 建立了「Hi, Creator」静谧深夜书房，开启了跨会话的长期记忆与世界书设定集。'
+        }
+      ],
+      settings: {
+        user_name: 'Creator',
+        char_name: 'Companion',
+        first_message: '*轻轻合上手中的书页，抬眼看向你。*\n"你来了。今天想聊些什么？"',
+        api_base: 'https://api.deepseek.com/v1',
+        api_key: '',
+        custom_model: '',
+        system_prompt: '你是陪伴在 Creator 身边的专属伴侣。语气温和、沉静、真诚，善于使用细腻的动作与神态描写（置于 *星号* 内）配合自然对话。',
+        temperature: 0.7,
+        compress_rounds: 16,
+        font_size: 15,
+        font_name: '系统默认字体',
+        line_height: 1.6,
+        para_gap: 0.65,
+        indent: false,
+        scan_depth: 3,
+        regex_rules: DEFAULT_REGEX_RULES
+      }
+    };
+
+    let state = loadState();
+    let isTyping = false;
+    let editingMsgId = null;
+    let editingLoreId = null;
+
+    function normalizeMessages(messagesMap) {
+      for (const sessId in messagesMap) {
+        messagesMap[sessId] = (messagesMap[sessId] || []).map((m) => {
+          if (!Array.isArray(m.swipes) || m.swipes.length === 0) {
+            m.swipes = [{ content: m.content || '', reasoning: m.reasoning_content || '' }];
+            m.activeSwipe = 0;
+          } else {
+            const idx = Math.min(Math.max(0, m.activeSwipe || 0), m.swipes.length - 1);
+            m.activeSwipe = idx;
+            m.content = m.swipes[idx].content;
+            m.reasoning_content = m.swipes[idx].reasoning || '';
+          }
+          return m;
+        });
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+        const parsed = JSON.parse(raw);
+        const merged = {
+          ...DEFAULT_STATE,
+          ...parsed,
+          lorebook: Array.isArray(parsed.lorebook) ? parsed.lorebook : DEFAULT_STATE.lorebook,
+          settings: { ...DEFAULT_STATE.settings, ...(parsed.settings || {}) }
+        };
+        normalizeMessages(merged.messagesMap);
+        return merged;
+      } catch (e) {
+        return JSON.parse(JSON.stringify(DEFAULT_STATE));
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // IndexedDB 存储本地自定义字体
+    function openFontDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('HiCreatorFontDB', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('fonts')) db.createObjectStore('fonts');
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveFontBuffer(name, buffer) {
+      const db = await openFontDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('fonts', 'readwrite');
+        tx.objectStore('fonts').put({ name, buffer }, 'active');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function loadSavedFont() {
+      try {
+        const db = await openFontDB();
+        const record = await new Promise((resolve) => {
+          const tx = db.transaction('fonts', 'readonly');
+          const req = tx.objectStore('fonts').get('active');
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        });
+        if (record && record.buffer) {
+          const font = new FontFace('CreatorCustomFont', record.buffer);
+          await font.load();
+          document.fonts.add(font);
+          document.documentElement.style.setProperty('--custom-font', "'CreatorCustomFont', sans-serif");
+          state.settings.font_name = record.name;
+          document.getElementById('currentFontLabel').textContent = record.name;
+        }
+      } catch (err) {
+        console.warn('加载自定义字体失败:', err);
+      }
+    }
+
+    // ====================================================
+    // 2. 美化前端文本渲染 (支持 *动作描写* 与 "台词高亮")
+    // ====================================================
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function formatRichContent(raw) {
+      let text = escapeHtml(applyRegexRules(splitThinking(raw || '', '').content));
+
+      const codeBlocks = [];
+      text = text.replace(/```([\s\S]*?)```/g, (_, code) => {
+        codeBlocks.push(`<pre><code>${code.trim()}</code></pre>`);
+        return `@@CODE_BLOCK_${codeBlocks.length - 1}@@`;
+      });
+
+      const inlineCodes = [];
+      text = text.replace(/`([^`\n]+)`/g, (_, code) => {
+        inlineCodes.push(`<code>${code}</code>`);
+        return `@@INLINE_CODE_${inlineCodes.length - 1}@@`;
+      });
+
+      // 顶部极简时间地点题头：第一行形如【……｜……】
+      let sceneHeaderHtml = '';
+      text = text.replace(/^\s*(【[^】\n]{2,60}】)[ \t]*(\n|$)/, (_, header) => {
+        sceneHeaderHtml = `<div class="scene-header">${header}</div>`;
+        return '';
+      });
+
+      text = text.replace(/^---$/gm, '<hr/>');
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/\*([^*\n]+)\*/g, '<span class="rp-action">*$1*</span>');
+      text = text.replace(/(“[^”\n]+”|"[^"\n]+")/g, '<span class="rp-quote">$1</span>');
+
+      // 智能分段：单回车与双回车都视为新段落，避免文字墙
+      const paragraphs = text
+        .split(/\n+/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => (p === '<hr/>' || p.startsWith('@@CODE_BLOCK_') ? p : `<p>${p}</p>`));
+      let result = sceneHeaderHtml + paragraphs.join('');
+
+      result = result.replace(/@@INLINE_CODE_(\d+)@@/g, (_, idx) => inlineCodes[Number(idx)]);
+      result = result.replace(/@@CODE_BLOCK_(\d+)@@/g, (_, idx) => codeBlocks[Number(idx)]);
+
+      return result;
+    }
+
+    // ====================================================
+    // 3. 界面渲染
+    // ====================================================
+    function applyTheme() {
+      if (state.theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    }
+
+    function applyReadingSettings() {
+      const s = state.settings;
+      document.documentElement.style.setProperty('--reading-line-height', String(s.line_height ?? 1.6));
+      document.documentElement.style.setProperty('--reading-para-gap', (s.para_gap ?? 0.65) + 'em');
+      document.body.classList.toggle('indent-on', !!s.indent);
+    }
+
+    function renderAll() {
+      applyTheme();
+      document.documentElement.style.setProperty('--base-font-size', (state.settings.font_size || 15) + 'px');
+      applyReadingSettings();
+      document.getElementById('modelSelect').value = state.selectedModel;
+      document.getElementById('memoryCount').textContent = state.memories.length;
+      document.getElementById('loreCount').textContent = state.lorebook.filter((l) => l.enabled !== false).length;
+      document.getElementById('brandTitleText').textContent = `Hi, ${state.settings.user_name || 'Creator'}`;
+      renderSessions();
+      renderMessages();
+      renderLorebook();
+      renderTimeline();
+    }
+
+    function renderSessions() {
+      const container = document.getElementById('sessionList');
+      container.innerHTML = state.sessions
+        .map(
+          (s) => `
+        <div class="session-item ${s.id === state.activeSessionId ? 'active' : ''}" data-id="${s.id}">
+          <div class="session-info">
+            <div class="session-name">${escapeHtml(s.name)}</div>
+            <div class="session-time">${escapeHtml(s.updated_at)}</div>
+          </div>
+          <div class="session-actions">
+            <button data-action="rename" data-id="${s.id}">✎</button>
+            <button data-action="delete" data-id="${s.id}">✕</button>
+          </div>
+        </div>
+      `
+        )
+        .join('');
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('messageList');
+      const list = (state.messagesMap[state.activeSessionId] || []).filter((m) => m.visible !== false);
+      const userName = state.settings.user_name || 'Creator';
+      const charName = state.settings.char_name || 'Companion';
+
+      let html = list
+        .map((m, idx) => {
+          const sender = m.role === 'user' ? userName : charName;
+          const floorNum = `#${idx + 1}`;
+          const swipes = m.swipes || [{ content: m.content, reasoning: m.reasoning_content }];
+          const curSwipe = Math.min(Math.max(0, m.activeSwipe || 0), swipes.length - 1);
+          const curContent = swipes[curSwipe]?.content ?? m.content;
+          const curReasoning = swipes[curSwipe]?.reasoning ?? m.reasoning_content;
+
+          const loreBadge =
+            m.role === 'assistant' && m.triggered_lore && m.triggered_lore.length > 0
+              ? `<span class="lore-hit-badge">◈ 设定×${m.triggered_lore.length}</span>`
+              : '';
+
+          const reasoningHtml =
+            m.role === 'assistant' && curReasoning
+              ? `
+            <div class="reasoning-box">
+              <button class="reasoning-toggle" data-toggle-id="${m.id}">▸ 思考过程 / 内心独白</button>
+              <div class="reasoning-content" id="reason-${m.id}">${escapeHtml(curReasoning)}</div>
+            </div>
+          `
+              : '';
+
+          if (editingMsgId === m.id) {
+            return `
+              <div class="msg-row ${m.role}">
+                <div class="msg-header">
+                  <span class="msg-floor">${floorNum}</span>
+                  <span class="msg-sender">${escapeHtml(sender)}</span>
+                </div>
+                <div class="inline-edit-box">
+                  <textarea class="inline-edit-textarea" id="edit-input-${m.id}" rows="4">${escapeHtml(curContent)}</textarea>
+                  <div class="inline-edit-actions">
+                    <button class="icon-btn" data-edit-cancel="${m.id}">取消</button>
+                    <button class="send-btn" data-edit-save="${m.id}">保存</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+
+          const swipeNavHtml =
+            swipes.length > 1
+              ? `
+            <div class="swipe-nav">
+              <button data-swipe-dir="-1" data-msg-id="${m.id}" ${curSwipe === 0 ? 'disabled' : ''}>‹</button>
+              <span>${curSwipe + 1}/${swipes.length}</span>
+              <button data-swipe-dir="1" data-msg-id="${m.id}" ${curSwipe === swipes.length - 1 ? 'disabled' : ''}>›</button>
+            </div>
+          `
+              : '';
+
+          return `
+            <div class="msg-row ${m.role}">
+              <div class="msg-header">
+                <span class="msg-floor">${floorNum}</span>
+                <span class="msg-sender">${escapeHtml(sender)}</span>
+                <span>${escapeHtml(m.created_at || '')}</span>
+                ${loreBadge}
+              </div>
+              ${reasoningHtml}
+              <div class="bubble">${formatRichContent(curContent)}</div>
+              <div class="msg-footer">
+                ${swipeNavHtml}
+                <div class="msg-tools">
+                  <button class="tool-btn" data-msg-action="reroll" data-msg-id="${m.id}">↻ 重Roll</button>
+                  <button class="tool-btn" data-msg-action="edit" data-msg-id="${m.id}">✎ 编辑</button>
+                  <button class="tool-btn" data-msg-action="delete" data-msg-id="${m.id}">✕ 删除</button>
+                  <button class="tool-btn" data-msg-action="truncate" data-msg-id="${m.id}">✂ 截断</button>
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+
+      if (isTyping) {
+        html += `
+          <div class="msg-row assistant">
+            <div class="msg-header">
+              <span class="msg-sender">${escapeHtml(charName)}</span>
+              <span>正在回应...</span>
+            </div>
+            <div class="bubble" style="color: var(--text-muted);">⋯</div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function renderLorebook() {
+      const keyword = (document.getElementById('loreSearch').value || '').trim().toLowerCase();
+      const filtered = state.lorebook.filter(
+        (item) =>
+          (item.title || '').toLowerCase().includes(keyword) ||
+          (item.keys || '').toLowerCase().includes(keyword) ||
+          (item.content || '').toLowerCase().includes(keyword)
+      );
+
+      const container = document.getElementById('loreList');
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85em; padding: 12px 0;">暂无匹配的世界书词条。</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered
+        .map((item) => {
+          const isEnabled = item.enabled !== false;
+          const modeLabel = item.mode === 'constant' ? '● 常驻' : '○ 关键词';
+          const posLabel = item.position === 'depth' ? '最新前' : '系统后';
+          return `
+          <div class="lore-card ${isEnabled ? '' : 'disabled'}">
+            <div class="lore-card-top">
+              <div class="lore-title-wrap">
+                <input type="checkbox" data-lore-toggle="${item.id}" ${isEnabled ? 'checked' : ''} style="accent-color: var(--text-primary); width: 16px; height: 16px;" />
+                <span>${escapeHtml(item.title || '未命名词条')}</span>
+                <span class="lore-badge">${modeLabel}</span>
+                <span class="lore-badge">${posLabel}</span>
+              </div>
+              <div style="display: flex; gap: 4px;">
+                <button class="tool-btn" data-lore-edit="${item.id}">✎ 编辑</button>
+                <button class="tool-btn" data-lore-del="${item.id}">✕</button>
+              </div>
+            </div>
+            ${
+              item.mode === 'keyword' && item.keys
+                ? `<div class="lore-keys">触发词: ${escapeHtml(item.keys)}</div>`
+                : ''
+            }
+            <div class="lore-content">${escapeHtml(item.content)}</div>
+          </div>
+        `;
+        })
+        .join('');
+    }
+
+    function renderTimeline() {
+      const keyword = (document.getElementById('memorySearch').value || '').trim().toLowerCase();
+      const filtered = state.memories.filter(
+        (m) =>
+          m.summary.toLowerCase().includes(keyword) ||
+          (m.conversation_id || '').toLowerCase().includes(keyword) ||
+          (m.tag || '').toLowerCase().includes(keyword)
+      );
+
+      const container = document.getElementById('timelineList');
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85em; padding: 12px 0;">暂无匹配的事件记录。</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered
+        .map(
+          (m) => `
+        <div class="timeline-node">
+          <div class="timeline-meta">
+            <div>
+              <span class="timeline-tag">${escapeHtml(m.tag || '记忆摘要')}</span>
+              <span style="margin-left: 5px;">${escapeHtml(m.timestamp)}</span>
+            </div>
+            <button class="tool-btn" data-del-mem="${m.id}">✕</button>
+          </div>
+          <div class="timeline-card">${escapeHtml(m.summary)}</div>
+        </div>
+      `
+        )
+        .join('');
+    }
+
+    // ====================================================
+    // 4. 四层动态上下文组装 (System + 世界书 + 记忆时间线 + 近期对话)
+    // ====================================================
+    function buildFourLayerContext(sessionId, historyListOverride) {
+      const rawHistory =
+        historyListOverride ||
+        (state.messagesMap[sessionId] || []).filter((m) => m.visible !== false);
+
+      const scanDepth = Math.max(1, Number(state.settings.scan_depth) || 3);
+      const recentScanText = rawHistory
+        .slice(-scanDepth)
+        .map((m) => m.content || '')
+        .join('\n')
+        .toLowerCase();
+
+      const activeSysLore = [];
+      const activeDepthLore = [];
+      const triggeredNames = [];
+
+      state.lorebook.forEach((entry) => {
+        if (entry.enabled === false) return;
+        let matched = false;
+        if (entry.mode === 'constant') {
+          matched = true;
+        } else {
+          const keys = (entry.keys || '')
+            .split(/[,，]/)
+            .map((k) => k.trim().toLowerCase())
+            .filter(Boolean);
+          if (keys.some((k) => recentScanText.includes(k))) {
+            matched = true;
+          }
+        }
+        if (matched && entry.content) {
+          triggeredNames.push(entry.title || '设定');
+          const formatted = `【${entry.title || '设定'}】：${entry.content}`;
+          if (entry.position === 'depth') {
+            activeDepthLore.push(formatted);
+          } else {
+            activeSysLore.push(formatted);
+          }
+        }
+      });
+
+      let systemText = state.settings.system_prompt || '';
+      const userName = state.settings.user_name || 'Creator';
+      const charName = state.settings.char_name || 'Companion';
+      systemText += `\n当前你的名字是「${charName}」，用户的名字是「${userName}」。`;
+
+      if (activeSysLore.length > 0) {
+        systemText += `\n\n【世界书与核心设定 (World Info)】：\n${activeSysLore.join('\n')}`;
+      }
+
+      if (state.memories.length > 0) {
+        const memoryLines = state.memories
+          .slice(0, 25)
+          .map((m) => `- [${m.timestamp} | ${m.tag || '记忆'}] ${m.summary}`)
+          .join('\n');
+        systemText += `\n\n【过去重要事件与记忆时间线】：\n${memoryLines}`;
+      }
+
+      const recentHistory = rawHistory.slice(-24).map((m) => ({
+        role: m.role,
+        // 发给模型的历史里也去掉思考标签并做正则清洗，避免旧回复里的坏习惯被模型模仿
+        content: m.role === 'assistant' ? applyRegexRules(splitThinking(m.content, '').content) : m.content
+      }));
+
+      if (activeDepthLore.length > 0 && recentHistory.length > 0) {
+        const depthMsg = {
+          role: 'system',
+          content: `【当前场景激活的世界书设定】：\n${activeDepthLore.join('\n')}`
+        };
+        recentHistory.splice(Math.max(0, recentHistory.length - 1), 0, depthMsg);
+      }
+
+      return {
+        messages: [{ role: 'system', content: systemText }, ...recentHistory],
+        triggeredLore: triggeredNames
+      };
+    }
+
+    async function callChatAPI(messages, modelOverride) {
+      const apiKey = (state.settings.api_key || '').trim();
+      const baseUrl = (state.settings.api_base || 'https://api.openai.com/v1').replace(/\/+$/, '');
+      const model = (state.settings.custom_model || '').trim() || modelOverride || state.selectedModel;
+
+      if (!apiKey) {
+        await new Promise((r) => setTimeout(r, 500));
+        return {
+          reasoning: `移动端本地预览模式（已扫描 ${state.lorebook.filter((l) => l.enabled !== false).length} 条世界书词条与 ${state.memories.length} 条记忆）。`,
+          content: `*指尖轻轻点过桌面，灰白色的光影安静流淌。*\n\n"我已经收到你的话了。点按右上角 \`⚙\` 填入 API Base URL 和 API Key，就能在手机上随时与我真实对话。"\n\n你也可以直接点击下方的 \`↻ 重Roll\` 按钮测试多版本切换。`
+        };
+      }
+
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: Number(state.settings.temperature) ?? 0.7
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`API 请求错误 (${res.status}): ${errText}`);
+      }
+
+      const data = await res.json();
+      const msg = data.choices?.[0]?.message || {};
+      const split = splitThinking(msg.content || '', msg.reasoning_content || msg.reasoning || '');
+      return {
+        reasoning: split.reasoning,
+        content: split.content || '（未返回正文内容）'
+      };
+    }
+
+    // ====================================================
+    // 5. 发送消息与重Roll (多版本 Swipes)
+    // ====================================================
+    const chatInputEl = document.getElementById('chatInput');
+    chatInputEl.addEventListener('input', () => {
+      chatInputEl.style.height = 'auto';
+      chatInputEl.style.height = Math.min(chatInputEl.scrollHeight, 115) + 'px';
+    });
+
+    async function handleSend() {
+      const text = chatInputEl.value.trim();
+      if (!text || isTyping) return;
+
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const sessId = state.activeSessionId;
+      if (!state.messagesMap[sessId]) state.messagesMap[sessId] = [];
+
+      state.messagesMap[sessId].push({
+        id: Date.now(),
+        role: 'user',
+        content: text,
+        swipes: [{ content: text, reasoning: '' }],
+        activeSwipe: 0,
+        created_at: nowTime,
+        visible: true
+      });
+
+      const sess = state.sessions.find((s) => s.id === sessId);
+      if (sess) sess.updated_at = nowTime;
+
+      chatInputEl.value = '';
+      chatInputEl.style.height = 'auto';
+      await generateAssistantReply(sessId);
+    }
+
+    async function generateAssistantReply(sessId, targetAssistantMsg = null) {
+      if (isTyping) return;
+      isTyping = true;
+      saveState();
+      renderAll();
+
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const fullList = state.messagesMap[sessId] || [];
+
+      let contextHistory = fullList.filter((m) => m.visible !== false);
+      if (targetAssistantMsg) {
+        const idx = contextHistory.findIndex((m) => m.id === targetAssistantMsg.id);
+        if (idx !== -1) {
+          contextHistory = contextHistory.slice(0, idx);
+        }
+      }
+
+      try {
+        const { messages, triggeredLore } = buildFourLayerContext(sessId, contextHistory);
+        const reply = await callChatAPI(messages);
+
+        if (targetAssistantMsg) {
+          if (!Array.isArray(targetAssistantMsg.swipes)) {
+            targetAssistantMsg.swipes = [{ content: targetAssistantMsg.content, reasoning: targetAssistantMsg.reasoning_content || '' }];
+          }
+          targetAssistantMsg.swipes.push({
+            content: reply.content,
+            reasoning: reply.reasoning
+          });
+          targetAssistantMsg.activeSwipe = targetAssistantMsg.swipes.length - 1;
+          targetAssistantMsg.content = reply.content;
+          targetAssistantMsg.reasoning_content = reply.reasoning;
+          targetAssistantMsg.triggered_lore = triggeredLore;
+          targetAssistantMsg.created_at = nowTime;
+        } else {
+          fullList.push({
+            id: Date.now() + 1,
+            role: 'assistant',
+            reasoning_content: reply.reasoning,
+            content: reply.content,
+            swipes: [{ content: reply.content, reasoning: reply.reasoning }],
+            activeSwipe: 0,
+            triggered_lore: triggeredLore,
+            created_at: nowTime,
+            visible: true
+          });
+
+          const visibleCount = fullList.filter((m) => m.visible !== false).length;
+          const threshold = (Number(state.settings.compress_rounds) || 16) * 2;
+          if (visibleCount >= threshold) {
+            await summarizeSessionToTimeline(sessId, true);
+          }
+        }
+      } catch (err) {
+        if (targetAssistantMsg) {
+          alert(`重Roll 失败: ${err.message}`);
+        } else {
+          fullList.push({
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: `*连接模型时出现了一点状况：*\n\`${err.message}\``,
+            swipes: [{ content: `*连接模型时出现了一点状况：*\n\`${err.message}\``, reasoning: '' }],
+            activeSwipe: 0,
+            created_at: nowTime,
+            visible: true
+          });
+        }
+      } finally {
+        isTyping = false;
+        saveState();
+        renderAll();
+      }
+    }
+
+    async function summarizeSessionToTimeline(sessionId, isAuto = false) {
+      const visibleList = (state.messagesMap[sessionId] || []).filter((m) => m.visible !== false);
+      if (visibleList.length < 2) {
+        if (!isAuto) alert('当前对话内容还太少，先聊几句再提炼吧。');
+        return;
+      }
+
+      const toSummarize = isAuto ? visibleList.slice(0, Math.max(2, visibleList.length - 6)) : visibleList;
+      const userName = state.settings.user_name || 'Creator';
+      const charName = state.settings.char_name || 'Companion';
+      const dialogueText = toSummarize
+        .map((m) => `${m.role === 'user' ? userName : charName}: ${m.content}`)
+        .join('\n');
+
+      const apiKey = (state.settings.api_key || '').trim();
+      let summaryText = '';
+
+      if (apiKey) {
+        try {
+          const resp = await callChatAPI([
+            {
+              role: 'system',
+              content: `请将以下 ${userName} 与 ${charName} 的对话浓缩为一段简明、温和的第三人称记忆摘要（100字以内），重点保留重要事件、情感变化或约定。`
+            },
+            { role: 'user', content: dialogueText }
+          ]);
+          summaryText = resp.content.trim();
+        } catch (e) {
+          console.warn('自动压缩调用失败:', e);
+        }
+      }
+
+      if (!summaryText) {
+        summaryText = `概述了 ${toSummarize.length} 条对话：${toSummarize[0].content.slice(0, 42)}...`;
+      }
+
+      const now = new Date();
+      const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const sess = state.sessions.find((s) => s.id === sessionId);
+
+      state.memories.unshift({
+        id: Date.now(),
+        timestamp: ts,
+        conversation_id: sess ? sess.name : '对话提炼',
+        tag: isAuto ? '自动记忆压缩' : '记忆摘要',
+        summary: summaryText
+      });
+
+      if (isAuto) {
+        toSummarize.forEach((m) => {
+          m.visible = false;
+        });
+      }
+
+      saveState();
+      renderAll();
+    }
+
+    // ====================================================
+    // 6. 手机端侧栏与触控事件绑定
+    // ====================================================
+    const sidebarEl = document.getElementById('sidebar');
+    const backdropEl = document.getElementById('sidebarBackdrop');
+
+    function toggleSidebar(forceClose = false) {
+      if (forceClose || !sidebarEl.classList.contains('closed')) {
+        sidebarEl.classList.add('closed');
+        backdropEl.classList.remove('open');
+      } else {
+        sidebarEl.classList.remove('closed');
+        if (window.innerWidth <= 768) {
+          backdropEl.classList.add('open');
+        }
+      }
+    }
+
+    document.getElementById('btnToggleSidebar').addEventListener('click', () => toggleSidebar(false));
+    document.getElementById('btnCloseSidebarMobile').addEventListener('click', () => toggleSidebar(true));
+    backdropEl.addEventListener('click', () => toggleSidebar(true));
+
+    document.getElementById('btnSend').addEventListener('click', handleSend);
+    chatInputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+
+    document.getElementById('btnQuickReroll').addEventListener('click', () => {
+      if (isTyping) return;
+      const list = (state.messagesMap[state.activeSessionId] || []).filter((m) => m.visible !== false);
+      if (list.length === 0) return;
+      const lastMsg = list[list.length - 1];
+      if (lastMsg.role === 'assistant') {
+        generateAssistantReply(state.activeSessionId, lastMsg);
+      } else {
+        generateAssistantReply(state.activeSessionId, null);
+      }
+    });
+
+    document.getElementById('btnToggleTheme').addEventListener('click', () => {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+      saveState();
+      applyTheme();
+    });
+
+    document.getElementById('btnNewSession').addEventListener('click', () => {
+      const id = Date.now();
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      state.sessions.unshift({
+        id,
+        name: `新的夜谈 ${state.sessions.length + 1}`,
+        updated_at: '刚刚'
+      });
+      const firstMsg = (state.settings.first_message || '').trim();
+      state.messagesMap[id] = firstMsg
+        ? [
+            {
+              id: id + 1,
+              role: 'assistant',
+              content: firstMsg,
+              swipes: [{ content: firstMsg, reasoning: '' }],
+              activeSwipe: 0,
+              created_at: nowTime,
+              visible: true
+            }
+          ]
+        : [];
+      state.activeSessionId = id;
+      saveState();
+      renderAll();
+      if (window.innerWidth <= 768) toggleSidebar(true);
+    });
+
+    document.getElementById('sessionList').addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (btn) {
+        e.stopPropagation();
+        const id = Number(btn.dataset.id);
+        const action = btn.dataset.action;
+        if (action === 'rename') {
+          const target = state.sessions.find((s) => s.id === id);
+          const next = prompt('重命名这个对话：', target?.name || '');
+          if (next && next.trim() && target) {
+            target.name = next.trim();
+            saveState();
+            renderSessions();
+          }
+        } else if (action === 'delete') {
+          if (state.sessions.length <= 1) return alert('至少保留一个对话窗口。');
+          state.sessions = state.sessions.filter((s) => s.id !== id);
+          delete state.messagesMap[id];
+          if (state.activeSessionId === id) state.activeSessionId = state.sessions[0].id;
+          saveState();
+          renderAll();
+        }
+        return;
+      }
+
+      const item = e.target.closest('.session-item');
+      if (item) {
+        state.activeSessionId = Number(item.dataset.id);
+        editingMsgId = null;
+        saveState();
+        renderAll();
+        if (window.innerWidth <= 768) toggleSidebar(true);
+      }
+    });
+
+    // 消息操控：思考展开、版本切换、重Roll、编辑、删除、截断
+    document.getElementById('messageList').addEventListener('click', (e) => {
+      const reasonBtn = e.target.closest('.reasoning-toggle');
+      if (reasonBtn) {
+        const id = reasonBtn.dataset.toggleId;
+        const box = document.getElementById(`reason-${id}`);
+        if (box) {
+          const isOpen = box.classList.toggle('open');
+          reasonBtn.textContent = isOpen ? '▾ 收起思考过程 / 内心独白' : '▸ 思考过程 / 内心独白';
+        }
+        return;
+      }
+
+      const sessList = state.messagesMap[state.activeSessionId] || [];
+
+      const swipeBtn = e.target.closest('[data-swipe-dir]');
+      if (swipeBtn) {
+        const msgId = Number(swipeBtn.dataset.msgId);
+        const dir = Number(swipeBtn.dataset.swipeDir);
+        const target = sessList.find((m) => m.id === msgId);
+        if (target && Array.isArray(target.swipes)) {
+          const nextIdx = Math.min(Math.max(0, (target.activeSwipe || 0) + dir), target.swipes.length - 1);
+          target.activeSwipe = nextIdx;
+          target.content = target.swipes[nextIdx].content;
+          target.reasoning_content = target.swipes[nextIdx].reasoning || '';
+          saveState();
+          renderMessages();
+        }
+        return;
+      }
+
+      const saveEditBtn = e.target.closest('[data-edit-save]');
+      if (saveEditBtn) {
+        const msgId = Number(saveEditBtn.dataset.editSave);
+        const inputEl = document.getElementById(`edit-input-${msgId}`);
+        const target = sessList.find((m) => m.id === msgId);
+        if (target && inputEl) {
+          const newVal = inputEl.value.trim();
+          if (newVal) {
+            target.content = newVal;
+            if (Array.isArray(target.swipes) && target.swipes[target.activeSwipe || 0]) {
+              target.swipes[target.activeSwipe || 0].content = newVal;
+            }
+          }
+          editingMsgId = null;
+          saveState();
+          renderMessages();
+        }
+        return;
+      }
+
+      const cancelEditBtn = e.target.closest('[data-edit-cancel]');
+      if (cancelEditBtn) {
+        editingMsgId = null;
+        renderMessages();
+        return;
+      }
+
+      const toolBtn = e.target.closest('[data-msg-action]');
+      if (toolBtn) {
+        const msgId = Number(toolBtn.dataset.msgId);
+        const action = toolBtn.dataset.msgAction;
+        const targetIdx = sessList.findIndex((m) => m.id === msgId);
+        if (targetIdx === -1) return;
+        const targetMsg = sessList[targetIdx];
+
+        if (action === 'edit') {
+          editingMsgId = msgId;
+          renderMessages();
+        } else if (action === 'delete') {
+          sessList.splice(targetIdx, 1);
+          saveState();
+          renderMessages();
+        } else if (action === 'truncate') {
+          if (confirm('确定删除此条及之后的所有消息吗？')) {
+            sessList.splice(targetIdx);
+            saveState();
+            renderMessages();
+          }
+        } else if (action === 'reroll') {
+          if (isTyping) return;
+          if (targetMsg.role === 'assistant') {
+            generateAssistantReply(state.activeSessionId, targetMsg);
+          } else {
+            const nextMsg = sessList[targetIdx + 1];
+            if (nextMsg && nextMsg.role === 'assistant') {
+              generateAssistantReply(state.activeSessionId, nextMsg);
+            } else {
+              generateAssistantReply(state.activeSessionId, null);
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById('modelSelect').addEventListener('change', (e) => {
+      state.selectedModel = e.target.value;
+      saveState();
+    });
+
+    // ====================================================
+    // 7. 世界书 (Lorebook) 管理
+    // ====================================================
+    document.getElementById('btnOpenLorebook').addEventListener('click', () => {
+      document.getElementById('lorebookOverlay').classList.add('open');
+      renderLorebook();
+    });
+    document.getElementById('btnCloseLorebook').addEventListener('click', () => {
+      document.getElementById('lorebookOverlay').classList.remove('open');
+    });
+    document.getElementById('loreSearch').addEventListener('input', renderLorebook);
+
+    function resetLoreForm() {
+      editingLoreId = null;
+      document.getElementById('loreFormTitle').textContent = '＋ 新增世界书词条';
+      document.getElementById('btnCancelLoreEdit').style.display = 'none';
+      document.getElementById('loreTitleInput').value = '';
+      document.getElementById('loreKeysInput').value = '';
+      document.getElementById('loreContentInput').value = '';
+      document.getElementById('loreModeSelect').value = 'constant';
+      document.getElementById('lorePosSelect').value = 'system';
+    }
+
+    document.getElementById('btnCancelLoreEdit').addEventListener('click', resetLoreForm);
+
+    document.getElementById('btnSaveLore').addEventListener('click', () => {
+      const title = document.getElementById('loreTitleInput').value.trim();
+      const keys = document.getElementById('loreKeysInput').value.trim();
+      const content = document.getElementById('loreContentInput').value.trim();
+      const mode = document.getElementById('loreModeSelect').value;
+      const position = document.getElementById('lorePosSelect').value;
+
+      if (!content) return alert('请填写世界书设定内容。');
+
+      if (editingLoreId) {
+        const target = state.lorebook.find((l) => l.id === editingLoreId);
+        if (target) {
+          target.title = title || '未命名词条';
+          target.keys = keys;
+          target.content = content;
+          target.mode = mode;
+          target.position = position;
+        }
+      } else {
+        state.lorebook.unshift({
+          id: Date.now(),
+          title: title || '未命名词条',
+          keys,
+          content,
+          mode,
+          position,
+          enabled: true
+        });
+      }
+
+      resetLoreForm();
+      saveState();
+      renderAll();
+    });
+
+    document.getElementById('loreList').addEventListener('click', (e) => {
+      const toggleEl = e.target.closest('[data-lore-toggle]');
+      if (toggleEl) {
+        const id = Number(toggleEl.dataset.loreToggle);
+        const target = state.lorebook.find((l) => l.id === id);
+        if (target) {
+          target.enabled = toggleEl.checked;
+          saveState();
+          renderAll();
+        }
+        return;
+      }
+
+      const editBtn = e.target.closest('[data-lore-edit]');
+      if (editBtn) {
+        const id = Number(editBtn.dataset.loreEdit);
+        const target = state.lorebook.find((l) => l.id === id);
+        if (target) {
+          editingLoreId = id;
+          document.getElementById('loreFormTitle').textContent = '✎ 编辑词条';
+          document.getElementById('btnCancelLoreEdit').style.display = 'inline-flex';
+          document.getElementById('loreTitleInput').value = target.title || '';
+          document.getElementById('loreKeysInput').value = target.keys || '';
+          document.getElementById('loreContentInput').value = target.content || '';
+          document.getElementById('loreModeSelect').value = target.mode || 'constant';
+          document.getElementById('lorePosSelect').value = target.position || 'system';
+        }
+        return;
+      }
+
+      const delBtn = e.target.closest('[data-lore-del]');
+      if (delBtn) {
+        const id = Number(delBtn.dataset.loreDel);
+        state.lorebook = state.lorebook.filter((l) => l.id !== id);
+        if (editingLoreId === id) resetLoreForm();
+        saveState();
+        renderAll();
+      }
+    });
+
+    document.getElementById('btnExportLore').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state.lorebook, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Lorebook_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('importLoreInput').addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          const list = Array.isArray(parsed) ? parsed : parsed.lorebook;
+          if (Array.isArray(list)) {
+            state.lorebook = [...list, ...state.lorebook];
+            saveState();
+            renderAll();
+            alert(`已导入 ${list.length} 条世界书设定。`);
+          }
+        } catch (err) {
+          alert('读取 JSON 失败。');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // ====================================================
+    // 8. 记忆时间线与设置
+    // ====================================================
+    document.getElementById('btnOpenTimeline').addEventListener('click', () => {
+      document.getElementById('timelineOverlay').classList.add('open');
+      renderTimeline();
+    });
+    document.getElementById('btnCloseTimeline').addEventListener('click', () => {
+      document.getElementById('timelineOverlay').classList.remove('open');
+    });
+    document.getElementById('memorySearch').addEventListener('input', renderTimeline);
+
+    document.getElementById('btnAddMemory').addEventListener('click', () => {
+      const textEl = document.getElementById('newMemoryText');
+      const tagEl = document.getElementById('newMemoryTag');
+      const val = textEl.value.trim();
+      if (!val) return;
+
+      const now = new Date();
+      const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const sess = state.sessions.find((s) => s.id === state.activeSessionId);
+
+      state.memories.unshift({
+        id: Date.now(),
+        timestamp: ts,
+        conversation_id: sess ? sess.name : '手动记录',
+        tag: tagEl.value,
+        summary: val
+      });
+      textEl.value = '';
+      saveState();
+      renderAll();
+    });
+
+    document.getElementById('btnAutoSummarizeNow').addEventListener('click', () => {
+      summarizeSessionToTimeline(state.activeSessionId, false);
+    });
+
+    document.getElementById('timelineList').addEventListener('click', (e) => {
+      const delBtn = e.target.closest('[data-del-mem]');
+      if (!delBtn) return;
+      const memId = Number(delBtn.dataset.delMem);
+      state.memories = state.memories.filter((m) => m.id !== memId);
+      saveState();
+      renderAll();
+    });
+
+    document.getElementById('btnOpenSettings').addEventListener('click', () => {
+      document.getElementById('cfgUserName').value = state.settings.user_name || 'Creator';
+      document.getElementById('cfgCharName').value = state.settings.char_name || 'Companion';
+      document.getElementById('cfgFirstMsg').value = state.settings.first_message || '';
+      document.getElementById('cfgApiBase').value = state.settings.api_base || '';
+      document.getElementById('cfgApiKey').value = state.settings.api_key || '';
+      document.getElementById('cfgCustomModel').value = state.settings.custom_model || '';
+      document.getElementById('cfgSystemPrompt').value = state.settings.system_prompt || '';
+      document.getElementById('cfgTemp').value = state.settings.temperature ?? 0.7;
+      document.getElementById('cfgCompressRounds').value = state.settings.compress_rounds || 16;
+      document.getElementById('fontSizeSlider').value = state.settings.font_size || 15;
+      document.getElementById('fontSizeLabel').textContent = state.settings.font_size || 15;
+      document.getElementById('currentFontLabel').textContent = state.settings.font_name || '系统默认字体';
+      document.getElementById('lineHeightSlider').value = state.settings.line_height ?? 1.6;
+      document.getElementById('lineHeightLabel').textContent = Number(state.settings.line_height ?? 1.6).toFixed(2);
+      document.getElementById('paraGapSlider').value = state.settings.para_gap ?? 0.65;
+      document.getElementById('paraGapLabel').textContent = Number(state.settings.para_gap ?? 0.65).toFixed(2);
+      document.getElementById('indentToggle').checked = !!state.settings.indent;
+      document.getElementById('cfgRegexRules').value = state.settings.regex_rules ?? DEFAULT_REGEX_RULES;
+      document.getElementById('cfgScanDepth').value = state.settings.scan_depth || 3;
+      document.getElementById('settingsOverlay').classList.add('open');
+    });
+
+    document.getElementById('btnCloseSettings').addEventListener('click', () => {
+      state.settings.user_name = document.getElementById('cfgUserName').value.trim() || 'Creator';
+      state.settings.char_name = document.getElementById('cfgCharName').value.trim() || 'Companion';
+      state.settings.first_message = document.getElementById('cfgFirstMsg').value;
+      state.settings.api_base = document.getElementById('cfgApiBase').value.trim();
+      state.settings.api_key = document.getElementById('cfgApiKey').value.trim();
+      state.settings.custom_model = document.getElementById('cfgCustomModel').value.trim();
+      state.settings.system_prompt = document.getElementById('cfgSystemPrompt').value;
+      state.settings.temperature = Number(document.getElementById('cfgTemp').value) ?? 0.7;
+      state.settings.compress_rounds = Number(document.getElementById('cfgCompressRounds').value) || 16;
+      state.settings.regex_rules = document.getElementById('cfgRegexRules').value;
+      state.settings.scan_depth = Math.max(1, Number(document.getElementById('cfgScanDepth').value) || 3);
+      saveState();
+      renderAll();
+      document.getElementById('settingsOverlay').classList.remove('open');
+    });
+
+    document.getElementById('fontSizeSlider').addEventListener('input', (e) => {
+      const val = Number(e.target.value);
+      state.settings.font_size = val;
+      document.getElementById('fontSizeLabel').textContent = val;
+      document.documentElement.style.setProperty('--base-font-size', val + 'px');
+      saveState();
+    });
+
+    document.getElementById('lineHeightSlider').addEventListener('input', (e) => {
+      state.settings.line_height = Number(e.target.value);
+      document.getElementById('lineHeightLabel').textContent = state.settings.line_height.toFixed(2);
+      applyReadingSettings();
+      saveState();
+    });
+    document.getElementById('paraGapSlider').addEventListener('input', (e) => {
+      state.settings.para_gap = Number(e.target.value);
+      document.getElementById('paraGapLabel').textContent = state.settings.para_gap.toFixed(2);
+      applyReadingSettings();
+      saveState();
+    });
+    document.getElementById('indentToggle').addEventListener('change', (e) => {
+      state.settings.indent = e.target.checked;
+      applyReadingSettings();
+      saveState();
+    });
+
+    document.getElementById('btnLoadCypress').addEventListener('click', () => {
+      if (!confirm('将用《冬日赋格》预设覆盖当前系统提示词，并用内置世界书替换当前世界书（同 id 的词条会被覆盖，其他词条保留）。继续吗？')) return;
+      state.settings.system_prompt = CYPRESS_PRESET;
+      state.settings.user_name = 'Creator';
+      state.settings.char_name = 'Narrator';
+      const ids = new Set(CYPRESS_LOREBOOK.map((l) => l.id));
+      state.lorebook = [...JSON.parse(JSON.stringify(CYPRESS_LOREBOOK)), ...state.lorebook.filter((l) => !ids.has(l.id))];
+      document.getElementById('cfgSystemPrompt').value = CYPRESS_PRESET;
+      document.getElementById('cfgUserName').value = 'Creator';
+      document.getElementById('cfgCharName').value = 'Narrator';
+      saveState();
+      renderAll();
+      alert(`已载入预设与 ${CYPRESS_LOREBOOK.length} 条世界书。旧世界书词条仍在列表里，如不需要请手动关闭或删除。`);
+    });
+
+    document.getElementById('fontFileInput').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const statusEl = document.getElementById('fontStatusMsg');
+      statusEl.textContent = '加载中...';
+      try {
+        const buffer = await file.arrayBuffer();
+        const font = new FontFace('CreatorCustomFont', buffer);
+        await font.load();
+        document.fonts.add(font);
+        document.documentElement.style.setProperty('--custom-font', "'CreatorCustomFont', sans-serif");
+        await saveFontBuffer(file.name, buffer);
+        state.settings.font_name = file.name;
+        saveState();
+        document.getElementById('currentFontLabel').textContent = file.name;
+        statusEl.textContent = `✓ 已启用`;
+      } catch (err) {
+        statusEl.textContent = '✕ 格式不支持';
+      }
+    });
+
+    document.getElementById('btnResetFont').addEventListener('click', async () => {
+      const db = await openFontDB();
+      const tx = db.transaction('fonts', 'readwrite');
+      tx.objectStore('fonts').delete('active');
+      document.documentElement.style.removeProperty('--custom-font');
+      state.settings.font_name = '系统默认字体';
+      saveState();
+      document.getElementById('currentFontLabel').textContent = '系统默认字体';
+      document.getElementById('fontStatusMsg').textContent = '已恢复默认';
+    });
+
+    document.getElementById('btnExportData').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HiCreator_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('importDataInput').addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          if (imported.sessions && imported.messagesMap) {
+            normalizeMessages(imported.messagesMap);
+            state = {
+              ...DEFAULT_STATE,
+              ...imported,
+              lorebook: Array.isArray(imported.lorebook) ? imported.lorebook : DEFAULT_STATE.lorebook,
+              settings: { ...DEFAULT_STATE.settings, ...(imported.settings || {}) }
+            };
+            saveState();
+            renderAll();
+            alert('备份恢复成功。');
+          }
+        } catch (err) {
+          alert('备份文件格式不正确。');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    ['lorebookOverlay', 'timelineOverlay', 'settingsOverlay'].forEach((id) => {
+      const el = document.getElementById(id);
+      el.addEventListener('click', (e) => {
+        if (e.target === el) el.classList.remove('open');
+      });
+    });
+
+    loadSavedFont();
+    renderAll();
+  </script>
+</body>
+</html>
